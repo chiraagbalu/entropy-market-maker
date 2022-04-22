@@ -330,7 +330,7 @@ async function listenFtxBooks(marketContexts: MarketContext[]) {
     }
   }
 }
- 
+
 
 /**
  * Long running service that keeps FTX perp funding rates updated via websocket using Tardis
@@ -471,7 +471,7 @@ async function fullMarketMaker() {
     state,
     stateRefreshInterval,
   );
-  
+
 
   const listenableMarketContexts = marketContexts.filter((context) => {
     // console.log(context.params['disableFtxBook']);
@@ -516,7 +516,7 @@ async function fullMarketMaker() {
 
           const IVoraclePrice = IVoraclePriceI8048.toNumber();
           // console.log("BTC_1D_IV Oracle Price: ", IVoraclePrice);
-          
+
           IVFundingOffset = calcFundingFromIV(IVoraclePrice, 7);
           // console.log("IVFundingOffset Oracle Price: ", IVFundingOffset);
 
@@ -527,7 +527,7 @@ async function fullMarketMaker() {
           entropyAccount,
           marketContexts[i],
           ftxBook,
-          ftxFundingRate, 
+          ftxFundingRate,
           IVFundingOffset,
         );
 
@@ -626,14 +626,14 @@ function makeMarketUpdateInstructions(
     // return [];
     ftxBid = new Decimal(oraclePrice).sub(0.01 * oraclePrice).toNumber();
     ftxAsk = new Decimal(oraclePrice).add(0.01 * oraclePrice).toNumber();
-  } 
-  
+  }
+
   // For BTC^2, squre BTC Price and normalize
   if (marketContext.marketName === "BTC^2-PERP") {
     ftxBid = new Decimal(ftxBid).pow(2).toNumber()/1000000;
     ftxAsk = new Decimal(ftxAsk).pow(2).toNumber()/1000000;
     ftxFunding = new Decimal(ftxFundingRate).toNumber();
-  } 
+  }
   else {
   }
 
@@ -644,7 +644,7 @@ function makeMarketUpdateInstructions(
   const ftxSpread = (fairAsk - fairBid) / fairValue;
   const equity = entropyAccount.computeValue(group, cache).toNumber();
   const perpAccount = entropyAccount.perpAccounts[marketIndex];
-   
+
   // TODO look at event queue as well for unprocessed fills
   const basePos = perpAccount.getBasePositionUi(market);
   const fundingBias = ftxFunding || 0;
@@ -658,7 +658,7 @@ function makeMarketUpdateInstructions(
   const spammerCharge = marketContext.params.spammerCharge;
   const size = (equity * sizePerc) / fairValue;
   const lean = 0//(-leanCoeff * basePos) / size;
-  // console.log('equity: ', equity.toString()); 
+  // console.log('equity: ', equity.toString());
   // console.log(new Date().toISOString(), `${marketContext.marketName} virginBid: `, fairBid);
   // console.log(new Date().toISOString(), `${marketContext.marketName} virginAsk: `, fairAsk);
   // console.log('FTX spread: ', ftxSpread);
@@ -673,7 +673,7 @@ function makeMarketUpdateInstructions(
   // console.log('chadBid: ', fairValue * (1 - edge + lean + bias + IVFundingOffset));
   // console.log('IV Funding Bias', IVFundingOffset);
 
-  let bidPrice = fairValue * (1 - edge + lean + bias + 1.5*IVFundingOffset);
+  let bidPrice = fairValue * (1 - edge + lean + bias + 2*IVFundingOffset);
   let askPrice = fairValue * (1 + edge + lean + bias + 3*IVFundingOffset);
 
   // console.log('bid notional: ', bidPrice * size);
