@@ -6,10 +6,10 @@
   "assets": {
     "BTC^2": {
       "perp": {
-        "sizePerc": 0.4,
+        "sizePerc": 0.6,
         "leanCoeff": 0.01,
         "bias": 0.0,
-        "requoteThresh": 0.0005,
+        "requoteThresh": 0.0001,
         "takeSpammers": true,
         "spammerCharge": 2,
         "disableFtxBook": true,
@@ -21,7 +21,7 @@
         "sizePerc": 0.2,
         "leanCoeff": 0.01,
         "bias": -0.0005,
-        "requoteThresh": 0.0005,
+        "requoteThresh": 0.0001,
         "takeSpammers": true,
         "spammerCharge": 2,
         "edge": 0.002
@@ -32,7 +32,7 @@
         "sizePerc": 0.03,
         "leanCoeff": 0.001,
         "bias": 0.0,
-        "requoteThresh": 0.0005,
+        "requoteThresh": 0.005,
         "takeSpammers": true,
         "spammerCharge": 2,
         "disableFtxBook": true,

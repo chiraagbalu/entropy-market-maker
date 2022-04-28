@@ -55,6 +55,7 @@ import IDS from './IDS.json';
 import { getMintDecimals } from '../node_modules/@project-serum/serum/lib/market';
 import Decimal from "decimal.js";
 import { privateEncrypt } from 'crypto';
+require('dotenv').config({ path: '.env' });
 
 console.log("PATH: ", process.env.KEYPAIR);
 
@@ -607,6 +608,7 @@ function makeMarketUpdateInstructions(
   );
 
   const lastUpdate = oracleCache.lastUpdate;
+  console.log("lastUpdate: ", Date.now()/1000-lastUpdate.toNumber());
 
   // console.log('oracle price: ', oraclePrice.toString());
   // console.log('last update: ', lastUpdate.toString());
