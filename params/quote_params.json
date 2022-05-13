@@ -6,7 +6,7 @@
   "assets": {
     "BTC^2": {
       "perp": {
-        "sizePerc": 0.6,
+        "sizePerc": 0.2,
         "leanCoeff": 0.01,
         "bias": 0.0,
         "requoteThresh": 0.0001,
@@ -18,7 +18,7 @@
     },
     "BTC": {
       "perp": {
-        "sizePerc": 0.2,
+        "sizePerc": 0.05,
         "leanCoeff": 0.01,
         "bias": -0.0005,
         "requoteThresh": 0.0001,
