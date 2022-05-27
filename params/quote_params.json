@@ -13,7 +13,7 @@
         "takeSpammers": true,
         "spammerCharge": 2,
         "disableFtxBook": true,
-        "edge": 0.0025
+        "edge": 0.0015
       }
     },
     "BTC": {
