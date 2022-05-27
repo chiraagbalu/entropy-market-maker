@@ -675,8 +675,8 @@ function makeMarketUpdateInstructions(
   // console.log('chadBid: ', fairValue * (1 - edge + lean + bias + IVFundingOffset));
   // console.log('IV Funding Bias', IVFundingOffset);
 
-  let bidPrice = fairValue * (1 - edge + lean + bias + 1*IVFundingOffset);
-  let askPrice = fairValue * (1 + edge + lean + bias + 2*IVFundingOffset);
+  let bidPrice = fairValue * (1 - edge + lean + bias + 1.3*IVFundingOffset);
+  let askPrice = fairValue * (1 + edge + lean + bias + 1.7*IVFundingOffset);
 
   // console.log('bid notional: ', bidPrice * size);
   // console.log('ask notional: ', askPrice * size);
@@ -700,6 +700,14 @@ function makeMarketUpdateInstructions(
     askPrice,
     size,
   );
+  let [modelBidPrice2, nativeBidSize2] = market.uiToNativePriceQuantity(
+    bidPrice*0.993,
+    size*4.87,
+  );
+  let [modelAskPrice2, nativeAskSize2] = market.uiToNativePriceQuantity(
+    askPrice*1.007,
+    size*4.95,
+  );
 
   // console.log('native bid size = ', nativeBidSize.toString());
   // console.log('native ask size = ', nativeAskSize.toString());
@@ -716,6 +724,15 @@ function makeMarketUpdateInstructions(
     bestBid !== undefined
       ? BN.max(bestBid.priceLots.add(ONE_BN), modelAskPrice)
       : modelAskPrice;
+
+  const bookAdjBid2 =
+    bestAsk !== undefined
+      ? BN.min(bestAsk.priceLots.sub(ONE_BN), modelBidPrice2)
+      : modelBidPrice2;
+  const bookAdjAsk2 =
+    bestBid !== undefined
+      ? BN.max(bestBid.priceLots.add(ONE_BN), modelAskPrice2)
+      : modelAskPrice2;
 
   console.log(new Date().toISOString(), `${marketContext.marketName} model bid: `, modelBidPrice.toString(), 'model ask: ', modelAskPrice.toString(), 'oracle px: ', new Decimal(oraclePrice));
 
@@ -841,6 +858,24 @@ function makeMarketUpdateInstructions(
       'postOnlySlide',
     );
 
+    const placeBidInstr2 = makePlacePerpOrderInstruction(
+      entropyProgramId,
+      group.publicKey,
+      entropyAccount.publicKey,
+      payer.publicKey,
+      cache.publicKey,
+      market.publicKey,
+      market.bids,
+      market.asks,
+      market.eventQueue,
+      entropyAccount.getOpenOrdersKeysInBasket(),
+      bookAdjBid2,
+      nativeBidSize2,
+      new BN(Date.now()),
+      'buy',
+      'postOnlySlide',
+    );
+
     const placeAskInstr = makePlacePerpOrderInstruction(
       entropyProgramId,
       group.publicKey,
@@ -858,9 +893,32 @@ function makeMarketUpdateInstructions(
       'sell',
       'postOnlySlide',
     );
+
+    const placeAskInstr2 = makePlacePerpOrderInstruction(
+      entropyProgramId,
+      group.publicKey,
+      entropyAccount.publicKey,
+      payer.publicKey,
+      cache.publicKey,
+      market.publicKey,
+      market.bids,
+      market.asks,
+      market.eventQueue,
+      entropyAccount.getOpenOrdersKeysInBasket(),
+      bookAdjAsk2,
+      nativeAskSize2,
+      new BN(Date.now()),
+      'sell',
+      'postOnlySlide',
+    );
+
     instructions.push(cancelAllInstr);
     instructions.push(placeBidInstr);
+    instructions.push(placeBidInstr2);
+
     instructions.push(placeAskInstr);
+    instructions.push(placeAskInstr2);
+
     console.log(
       new Date().toISOString(), `${marketContext.marketName} Requoting sentBidPx: ${marketContext.sentBidPrice} newBidPx: ${bookAdjBid} sentAskPx: ${marketContext.sentAskPrice} newAskPx: ${bookAdjAsk} spread: ${bookAdjAsk.toNumber()-bookAdjBid.toNumber()}`,
     );
