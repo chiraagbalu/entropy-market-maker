@@ -6,6 +6,8 @@
   "assets": {
     "BTC^2": {
       "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
         "sizePerc": 0.1,
         "leanCoeff": 0.05,
         "bias": 0.0,
@@ -18,6 +20,8 @@
     },
     "BTC": {
       "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
         "sizePerc": 0.05,
         "leanCoeff": 0.01,
         "bias": -0.0000,
@@ -29,6 +33,8 @@
     },
     "BTC_1D_IV": {
       "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
         "sizePerc": 0.01,
         "leanCoeff": 0.001,
         "bias": 0.0007,
