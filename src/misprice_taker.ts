@@ -1,3 +1,4 @@
+//importing stuff
 import {
     Account,
     Commitment,
@@ -31,6 +32,7 @@ import {
     PerpMarketConfig,
     sleep,
     zeroKey,
+    getTokenAccountsByOwnerWithWrappedSol,
   } from '@friktion-labs/entropy-client';
   import { OpenOrders } from '@project-serum/serum';
   import path from 'path';
@@ -52,14 +54,16 @@ import {
   
   // File containing info of serum markets being quoted
   import IDS from './IDS.json';
-  import { getMintDecimals } from '../node_modules/@project-serum/serum/lib/market';
+  import { getMintDecimals } from '@project-serum/serum/lib/market';
   import Decimal from "decimal.js";
   import { privateEncrypt } from 'crypto';
+  
   require('dotenv').config({ path: '.env' });
   
   console.log("PATH: ", process.env.KEYPAIR);
   
   // Custom quote parameters
+  //#region
   const paramsFileName = process.env.PARAMS || 'quote_params.json';
   const params = JSON.parse(
     fs.readFileSync(
@@ -67,6 +71,11 @@ import {
       'utf-8',
     ),
   );
+  
+  //#endregion
+  
+  //keypair path
+  //#region 
   
   // Path to keypair
   const payer = new Account(
@@ -78,8 +87,14 @@ import {
     ),
   );
   
+  //#endregion
+  
+  //config and IDs 
+  //#region
+  
   const config = new Config(IDS);
   
+  //group Ids
   const groupIds = config.getGroupWithName(params.group) as GroupConfig;
   if (!groupIds) {
     throw new Error(`Group ${params.group} not found`);
@@ -87,7 +102,13 @@ import {
   const cluster = groupIds.cluster as Cluster;
   const entropyProgramId = groupIds.entropyProgramId;
   const entropyGroupKey = groupIds.publicKey;
-  const control = {isRunning: true, interval: params.interval};
+  const control = {isRunning: true, interval: params.interval, };
+  
+  //#endregion
+  
+  
+  //marketcontext information
+  //#region
   
   type MarketContext = {
     marketName: string;
@@ -113,15 +134,20 @@ import {
     lastOrderUpdate: number;
   };
   
+  //#endregion
+  
+  //rng
+  //#region
+  
   function getRandomNumber(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.random() * (max - min + 1) + min;
   }
   
-  /**
-   * Periodically fetch the Entropy account and market state
-   */
+  //#endregion
+  
+  //get entropy account and market context
   async function listenAccountAndMarketState(
     connection: Connection,
     group: EntropyGroup,
@@ -219,10 +245,9 @@ import {
     }
   }
   
-  /**
-   * Load oracle price cache, account info and Bids and Asks for all perp markets using only
-   * one RPC call.
-   */
+  
+  
+  //load price oracle cache, acct info, and bids and asks for all perp markets
   async function loadAccountAndMarketState(
     connection: Connection,
     group: EntropyGroup,
@@ -305,9 +330,7 @@ import {
     };
   }
   
-  /**
-   * Long running service that keeps FTX perp books updated via websocket using Tardis
-   */
+  //keep FTX perp books updated via websocket using tardis
   async function listenFtxBooks(marketContexts: MarketContext[]) {
     // console.log('listen ftx books')
     const symbolToContext = Object.fromEntries(
@@ -333,9 +356,8 @@ import {
   }
   
   
-  /**
-   * Long running service that keeps FTX perp funding rates updated via websocket using Tardis
-   */
+  
+  //keep FTX perp funding rates updated via websocket using Tardis
    async function listenFtxFundingRates(marketContexts: MarketContext[]) {
     // console.log('listen ftx funding rates')
     const symbolToContext = Object.fromEntries(
@@ -359,8 +381,11 @@ import {
     }
   }
   
-  
+  //marketmaker
   async function fullMarketMaker() {
+    //connection to client
+    //#region
+  
     console.log(new Date().toISOString(), "Loading Market Making Params", params);
     console.log(new Date().toISOString(), "Establishing Client Connection...");
     const connection = new Connection(
@@ -370,10 +395,20 @@ import {
     const client = new EntropyClient(connection, entropyProgramId);
     console.log(new Date().toISOString(), "Client Connection Established...");
   
-    // load group
+    //#endregion
+  
+  
+    //load groups
+    //#region
+  
     console.log(new Date().toISOString(), "Loading Entropy Market Groups...");
     const entropyGroup = await client.getEntropyGroup(entropyGroupKey);
   
+    //#endregion
+    
+    //load entropyaccount
+    //#region
+    
     console.log(new Date().toISOString(), "Loading Entropy Account Details...");
     // load entropyAccount
     let entropyAccount: EntropyAccount;
@@ -396,6 +431,11 @@ import {
         'Please add entropyAccountName or entropyAccountPubkey to params file',
       );
     }
+  
+    //#endregion
+  
+    //get btcmarketcontext information
+    //#region
   
     const perpMarkets: PerpMarket[] = [];
     const marketContexts: MarketContext[] = [];
@@ -445,18 +485,29 @@ import {
         btcMarketContext = marketContexts[marketContexts.length - 1];
     }
   
+    //#endregion
+  
     // Initialize all the sequence accounts
-    const seqAccInstrs = marketContexts.map((mc) =>
-      makeInitSequenceInstruction(
-        mc.sequenceAccount,
-        payer.publicKey,
-        mc.sequenceAccountBump,
-        mc.marketName,
-      ),
-    );
-    const seqAccTx = new Transaction();
-    seqAccTx.add(...seqAccInstrs);
+    //#region
+  
+        const seqAccInstrs = marketContexts.map((mc) =>
+        makeInitSequenceInstruction(
+          mc.sequenceAccount,
+          payer.publicKey,
+          mc.sequenceAccountBump,
+          mc.marketName,
+        ),
+      );
+      const seqAccTx = new Transaction();
+      seqAccTx.add(...seqAccInstrs);
+  
+    //#endregion
+    
+    //initial transaction
     const seqAccTxid = await client.sendTransaction(seqAccTx, payer, [], undefined, undefined, "Init tx for all markets");
+  
+    //load state and define refresh interval
+    //#region
   
     const state = await loadAccountAndMarketState(
       connection,
@@ -473,6 +524,10 @@ import {
       stateRefreshInterval,
     );
   
+    //#endregion
+  
+    //listen for market context
+    //#region
   
     const listenableMarketContexts = marketContexts.filter((context) => {
       // console.log(context.params['disableFtxBook']);
@@ -484,26 +539,52 @@ import {
     listenFtxBooks(listenableMarketContexts);
     listenFtxFundingRates(listenableMarketContexts);
   
+    //#endregion
+  
+  
+    //cancel orders
+    //#region
+  
     process.on('SIGINT', function () {
       console.log('Caught keyboard interrupt. Canceling orders');
       control.isRunning = false;
       onExit(client, payer, entropyGroup, entropyAccount, marketContexts);
     });
   
+    //#endregion
+  
+    //while running
     while (control.isRunning) {
       try {
+  
+        //set up initial info stuff
+        //#region
+  
         entropyAccount = state.entropyAccount;
   
         let j = 0;
         let tx = new Transaction();
+  
+        //#endregion
+  
+        //for each market context
         for (let i = 0; i < marketContexts.length; i++) {
+  
+          //define variables 
+          //#region
+  
           const perpMarket = perpMarkets[i];
-          // marketContexts[i].bids = await perpMarket.loadBids(connection);
-          // marketContexts[i].asks = await perpMarket.loadAsks(connection);
+          //marketContexts[i].bids = await perpMarket.loadBids(connection);
+          //marketContexts[i].asks = await perpMarket.loadAsks(connection);
           let ftxBook = marketContexts[i].tardisBook;
           let ftxFundingRate = marketContexts[i].fundingRate;
           let IVFundingOffset = 0;
-          // console.log('market name: ', marketContexts[i].marketName);
+          //console.log('market name: ', marketContexts[i].marketName);
+  
+          //#endregion
+          
+          //special conditions for btc squared
+          //#region
           if (marketContexts[i].marketName === "BTC^2-PERP") {
             if (btcMarketContext === null) {
               throw new Error("btc market context is null");
@@ -511,17 +592,22 @@ import {
             ftxBook = btcMarketContext.tardisBook;
             ftxFundingRate = btcMarketContext.fundingRate;
   
-            // Load implied vol oracle price from the cache
+            //load implied vol oracle price from the cache
+  
             const IVoracleCache = state.cache.priceCache[2];
             const IVoraclePriceI8048 = IVoracleCache.price;
-  
             const IVoraclePrice = IVoraclePriceI8048.toNumber();
-            // console.log("BTC_1D_IV Oracle Price: ", IVoraclePrice);
+  
+            //console.log("BTC_1D_IV Oracle Price: ", IVoraclePrice);
   
             IVFundingOffset = calcFundingFromIV(IVoraclePrice, 7);
-            // console.log("IVFundingOffset Oracle Price: ", IVFundingOffset);
-  
+            //console.log("IVFundingOffset Oracle Price: ", IVFundingOffset);
           }
+          //#endregion
+          
+          //make instructions
+          //#region
+  
           const instrSet = makeMarketUpdateInstructions(
             entropyGroup,
             state.cache,
@@ -532,7 +618,11 @@ import {
             IVFundingOffset,
           );
   
+          
+  
           if (instrSet.length > 0) {
+  
+            //for each instruction make a new transaction
             instrSet.forEach((ix) => tx.add(ix));
             j++;
             if (j === params.batch) {
@@ -541,6 +631,8 @@ import {
               j = 0;
             }
           }
+  
+          //#endregion
         }
   
         if (tx.instructions.length) {
@@ -554,6 +646,9 @@ import {
       }
     }
   }
+  
+  //get best bid and ask 
+  //#region
   
   class TardisBook extends OrderBook {
     getSizedBestBid(quoteSize: number): number | undefined {
@@ -578,6 +673,13 @@ import {
     }
   }
   
+  //#endregion
+  
+  
+  //calculate funding
+  //#region 
+  
+  //calculate funding from IV function
   function calcFundingFromIV(
     IVoraclePrice: number,
     days: number
@@ -585,8 +687,12 @@ import {
     return (IVoraclePrice/100)**2/365*days;
   }
   
+  //#endregion
   
+  //how the market maker updates stuff
   function makeMarketUpdateInstructions(
+    //params
+    //#region
     group: EntropyGroup,
     cache: EntropyCache,
     entropyAccount: EntropyAccount,
@@ -594,8 +700,14 @@ import {
     ftxBook: TardisBook,
     ftxFundingRate: number,
     IVFundingOffset: number,
+    //#endregion
   ): TransactionInstruction[] {
     // Right now only uses the perp
+  
+    //defining constants from marketcontext 
+    //#region
+  
+  
     const marketIndex = marketContext.marketIndex;
     const market = marketContext.market;
     const bids = marketContext.bids;
@@ -606,12 +718,21 @@ import {
     const oraclePrice = group.cachePriceToUi(
       oraclePriceI8048, marketIndex
     );
+    
+    //#endregion
+    
+    //update log
+    //#region
   
     const lastUpdate = oracleCache.lastUpdate;
     console.log("lastUpdate: ", Date.now()/1000-lastUpdate.toNumber());
-  
     // console.log('oracle price: ', oraclePrice.toString());
     // console.log('last update: ', lastUpdate.toString());
+    
+    //#endregion
+  
+    //get ftx info
+    //#region
   
     let ftxBid = ftxBook.getSizedBestBid(
       marketContext.params.ftxSize || 100000,
@@ -636,8 +757,14 @@ import {
       ftxAsk = new Decimal(ftxAsk).pow(2).toNumber()/1000000;
       ftxFunding = new Decimal(ftxFundingRate).toNumber();
     }
+  
     else {
     }
+  
+    //#endregion
+  
+    //defining parameters for trading
+    //#region
   
     const fairBid = ftxBid;
     const fairAsk = ftxAsk;
@@ -655,11 +782,22 @@ import {
     const leanCoeff = marketContext.params.leanCoeff;
     const edge = (marketContext.params.edge || 0.0015) + ftxSpread / 2;
     const bias = marketContext.params.bias;
+    //takePerc: percent of capital to use when taking
+    const takePerc = marketContext.params.takePerc;
+    //mispriceThresh: percentage to consider taking a price (ie: mispriceThresh: 0.05, buy when ftx/entropybestask > 1.05%, sell when entropybestbid/ftx > 1.05%)
+    const mispriced = marketContext.params.mispriceThresh; 
     const requoteThresh = marketContext.params.requoteThresh;
     const takeSpammers = marketContext.params.takeSpammers;
     const spammerCharge = marketContext.params.spammerCharge;
     const size = (equity * sizePerc) / fairValue;
     const lean = 0//(-leanCoeff * basePos) / size;
+  
+    //#endregion
+    
+    //console logging
+    //#region
+  
+  
     // console.log('equity: ', equity.toString());
     // console.log(new Date().toISOString(), `${marketContext.marketName} virginBid: `, fairBid);
     // console.log(new Date().toISOString(), `${marketContext.marketName} virginAsk: `, fairAsk);
@@ -674,6 +812,11 @@ import {
     // console.log('virginBid: ', fairValue * (1 - edge + lean + bias));
     // console.log('chadBid: ', fairValue * (1 - edge + lean + bias + IVFundingOffset));
     // console.log('IV Funding Bias', IVFundingOffset);
+  
+    //#endregion
+    
+    //bid ask stuff 
+    //#region
   
     let bidPrice = fairValue * (1 - edge + lean + bias + 1.3*IVFundingOffset);
     let askPrice = fairValue * (1 + edge + lean + bias + 1.7*IVFundingOffset);
@@ -734,9 +877,17 @@ import {
         ? BN.max(bestBid.priceLots.add(ONE_BN), modelAskPrice2)
         : modelAskPrice2;
   
+    
+  
     console.log(new Date().toISOString(), `${marketContext.marketName} model bid: `, modelBidPrice.toString(), 'model ask: ', modelAskPrice.toString(), 'oracle px: ', new Decimal(oraclePrice));
   
     // console.log('model bid: ', modelBidPrice.toString(), ', model ask: ', modelAskPrice.toString());
+  
+    //#endregion
+    
+    //moving orders based on updates
+    //#region
+  
     // TODO use order book to requote if size has changed
   
     let moveOrders = false;
@@ -762,7 +913,9 @@ import {
           requoteThresh;
     }
   
-    // Start building the transaction
+    //#endregion
+  
+    //transaction building
     const instructions: TransactionInstruction[] = [
       makeCheckAndSetSequenceNumberInstruction(
         marketContext.sequenceAccount,
@@ -771,9 +924,69 @@ import {
       ),
     ];
   
-    /*
-    Clear 1 lot size orders at the top of book that bad people use to manipulate the price
-     */
+  
+    //taker logic
+    //#region
+  
+    //taker fees go brrrr
+    //check ftx pricing
+    //check best bid and best offer
+    //if ftx pricing > best offer (ftx/BB: 31k/30k > mispricing)
+    //lift best offer
+    //if ftx pricing < best bid (BB/ftx: 31k/30k > mispricing)
+    //hit best bid
+    //however we also need to make sure its above some sort of threshold
+  
+    const takeSize = (equity * takePerc) / fairValue;
+  
+    if (bestBid !== undefined && bestBid?.price/fairValue > 1 + mispriced) {
+      console.log(`${marketContext.marketName} Selling Mispricing`);
+      const takerSell = makePlacePerpOrderInstruction(
+        entropyProgramId,
+        group.publicKey,
+        entropyAccount.publicKey,
+        payer.publicKey,
+        cache.publicKey,
+        market.publicKey,
+        market.bids,
+        market.asks,
+        market.eventQueue,
+        entropyAccount.getOpenOrdersKeysInBasket(),
+        bestBid.priceLots,
+        new BN(takeSize),
+        new BN(Date.now()),
+        'sell',
+        'ioc',
+      );
+      instructions.push(takerSell);
+  
+    } else if (bestAsk !== undefined && fairValue/bestAsk?.price > 1 + mispriced) {
+      console.log(`${marketContext.marketName} Buying Mispricing `);
+      const takerBuy = makePlacePerpOrderInstruction(
+        entropyProgramId,
+        group.publicKey,
+        entropyAccount.publicKey,
+        payer.publicKey,
+        cache.publicKey,
+        market.publicKey,
+        market.bids,
+        market.asks,
+        market.eventQueue,
+        entropyAccount.getOpenOrdersKeysInBasket(),
+        bestAsk.priceLots,
+        new BN(takeSize),
+        new BN(Date.now()),
+        'buy',
+        'ioc',
+      );
+      instructions.push(takerBuy);
+    } 
+  
+    //#endregion
+  
+    //clearing 1 lot orders that are used to manipulate price
+    //#region
+  
     if (
       takeSpammers &&
       bestBid !== undefined &&
@@ -827,6 +1040,9 @@ import {
       );
       instructions.push(takerBuy);
     }
+    //#endregion
+  
+    //moving orders  
     if (moveOrders) {
       // cancel all, requote
       const cancelAllInstr = makeCancelAllPerpOrdersInstruction(
@@ -931,6 +1147,9 @@ import {
       );
     }
   
+    //other cases
+    //#region
+  
     // if instruction is only the sequence enforcement, then just send empty
     if (instructions.length === 1) {
       return [];
@@ -938,8 +1157,10 @@ import {
       // console.log('returning instructions with length = ', instructions.length);
       return instructions;
     }
+    //#endregion
   }
   
+  //exit logic  
   async function onExit(
     client: EntropyClient,
     payer: Account,
@@ -983,9 +1204,10 @@ import {
     });
     process.exit();
   }
-  
+    
   function startMarketMaker() {
     if (control.isRunning) {
+      console.log('run market maker')
       fullMarketMaker().finally(startMarketMaker);
     }
   }
@@ -1001,4 +1223,3 @@ import {
   });
   
   startMarketMaker();
-  
