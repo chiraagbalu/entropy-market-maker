@@ -773,6 +773,11 @@ function makeMarketUpdateInstructions(
     else {
     }
 
+    console.log(`${marketContext.marketName}`)
+    console.log(`ftxBid: ${ftxBid}`)
+    console.log(`ftxAsk: ${ftxAsk}`)
+
+
     //#endregion
 
     //defining parameters for trading
@@ -814,11 +819,11 @@ function makeMarketUpdateInstructions(
     // console.log(new Date().toISOString(), `${marketContext.marketName} virginBid: `, fairBid);
     // console.log(new Date().toISOString(), `${marketContext.marketName} virginAsk: `, fairAsk);
     // console.log('FTX spread: ', ftxSpread);
-    console.log(new Date().toISOString(), `${marketContext.marketName} basePos: `, basePos);
-    console.log(new Date().toISOString(), `${marketContext.marketName} lean_adjust: `, lean);
+    //console.log(new Date().toISOString(), `${marketContext.marketName} basePos: `, basePos);
+    //console.log(new Date().toISOString(), `${marketContext.marketName} lean_adjust: `, lean);
     if (marketContext.marketName === "BTC^2-PERP") {
-        console.log(new Date().toISOString(), `${marketContext.marketName} Variance Funding Adjust: `, IVFundingOffset);
-        console.log(new Date().toISOString(), `${marketContext.marketName} Implied Volatility: `, (IVFundingOffset * 52) ** 0.5 * 100);
+        //console.log(new Date().toISOString(), `${marketContext.marketName} Variance Funding Adjust: `, IVFundingOffset);
+        //console.log(new Date().toISOString(), `${marketContext.marketName} Implied Volatility: `, (IVFundingOffset * 52) ** 0.5 * 100);
     }
     // console.log('fundingRate: ', fundingBias);
     // console.log('virginBid: ', fairValue * (1 - edge + lean + bias));
@@ -829,9 +834,16 @@ function makeMarketUpdateInstructions(
 
     //bid ask stuff 
     //#region
-
+    
     let bidPrice = fairValue * (1 - edge + lean + bias + 1.3 * IVFundingOffset);
     let askPrice = fairValue * (1 + edge + lean + bias + 1.7 * IVFundingOffset);
+
+    /*
+    console.log(`${marketContext.marketName}`)
+    console.log(`fairvalue | edge | lean | bias | IVFundingOffset)`)
+    console.log(`${fairValue} | ${edge} | ${lean} | ${bias} | ${IVFundingOffset}`)
+    */
+
 
     // console.log('bid notional: ', bidPrice * size);
     // console.log('ask notional: ', askPrice * size);
@@ -891,7 +903,7 @@ function makeMarketUpdateInstructions(
 
 
 
-    console.log(new Date().toISOString(), `${marketContext.marketName} model bid: `, modelBidPrice.toString(), 'model ask: ', modelAskPrice.toString(), 'oracle px: ', new Decimal(oraclePrice));
+    //console.log(new Date().toISOString(), `${marketContext.marketName} model bid: `, modelBidPrice.toString(), 'model ask: ', modelAskPrice.toString(), 'oracle px: ', new Decimal(oraclePrice));
 
     // console.log('model bid: ', modelBidPrice.toString(), ', model ask: ', modelAskPrice.toString());
 
@@ -952,9 +964,11 @@ function makeMarketUpdateInstructions(
     const takeSize = (equity * takePerc) / fairValue;
 
     if (bestBid !== undefined && bestBid?.price / fairValue > 1 + mispriced) {
+        /*
         console.log(`mispricing: in ${marketContext.marketName}`)
         console.log(`bestBid: ${bestBid?.price}, fairValue: ${fairValue}`)
         console.log(`${marketContext.marketName} Selling Mispricing of ${bestBid?.price/fairValue}`);
+        */
         const takerSell = makePlacePerpOrderInstruction(
             entropyProgramId,
             group.publicKey,
@@ -975,9 +989,11 @@ function makeMarketUpdateInstructions(
         //instructions.push(takerSell);
 
     } else if (bestAsk !== undefined && fairValue / bestAsk?.price > 1 + mispriced) {
+        /*
         console.log(`mispricing: in ${marketContext.marketName}`)
         console.log(`fairValue: ${fairValue}, bestAsk: ${bestAsk?.price}`)
         console.log(`${marketContext.marketName} Buying Mispricing of ${fairValue/bestAsk?.price}`);
+        */
         const takerBuy = makePlacePerpOrderInstruction(
             entropyProgramId,
             group.publicKey,
@@ -1028,7 +1044,7 @@ function makeMarketUpdateInstructions(
             'sell',
             'ioc',
         );
-        instructions.push(takerSell);
+        //instructions.push(takerSell);
     } else if (
         takeSpammers &&
         bestAsk !== undefined &&
@@ -1054,7 +1070,7 @@ function makeMarketUpdateInstructions(
             'buy',
             'ioc',
         );
-        instructions.push(takerBuy);
+        //instructions.push(takerBuy);
     }
     //#endregion
 
@@ -1145,22 +1161,26 @@ function makeMarketUpdateInstructions(
         );
 
         instructions.push(cancelAllInstr);
-        instructions.push(placeBidInstr);
-        instructions.push(placeBidInstr2);
+        //instructions.push(placeBidInstr);
+        //instructions.push(placeBidInstr2);
 
-        instructions.push(placeAskInstr);
-        instructions.push(placeAskInstr2);
+        //instructions.push(placeAskInstr);
+        //instructions.push(placeAskInstr2);
 
+        /*
         console.log(
             new Date().toISOString(), `${marketContext.marketName} Requoting sentBidPx: ${marketContext.sentBidPrice} newBidPx: ${bookAdjBid} sentAskPx: ${marketContext.sentAskPrice} newAskPx: ${bookAdjAsk} spread: ${bookAdjAsk.toNumber() - bookAdjBid.toNumber()}`,
         );
+        */
         marketContext.sentBidPrice = bookAdjBid.toNumber();
         marketContext.sentAskPrice = bookAdjAsk.toNumber();
         marketContext.lastOrderUpdate = getUnixTs() / 1000;
     } else {
+        /*
         console.log(
             new Date().toISOString(), `${marketContext.marketName} Not requoting... No need to move orders`,
         );
+        */
     }
 
     //other cases
