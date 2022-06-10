@@ -6,6 +6,12 @@
   "assets": {
     "BTC^2": {
       "perp": {
+        "maxTakePortPerc": 0.3,
+        "maxTakePortNotional": 1000,
+        "minTakeNotional": 10,
+        "maxTakeNotional": 100,
+        "minTakePerc": 0.01,
+        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.05,
         "mispriceThresh": 0.1,
@@ -21,6 +27,12 @@
     },
     "BTC": {
       "perp": {
+        "maxTakePortPerc": 0.3,
+        "maxTakePortNotional": 1000,
+        "minTakeNotional": 10,
+        "maxTakeNotional": 100,
+        "minTakePerc": 0.01,
+        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.05,
         "mispriceThresh": 0.1,
@@ -35,6 +47,12 @@
     },
     "BTC_1D_IV": {
       "perp": {
+        "maxTakePortPerc": 0.3,
+        "maxTakePortNotional": 1000,
+        "minTakeNotional": 10,
+        "maxTakeNotional": 100,
+        "minTakePerc": 0.01,
+        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.05,
         "mispriceThresh": 0.001,

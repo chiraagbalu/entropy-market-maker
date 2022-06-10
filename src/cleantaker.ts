@@ -786,10 +786,19 @@ function makeMarketUpdateInstructions(
     const timeLimit = marketContext.params.timeLimit;
 
     const sizePerc = marketContext.params.sizePerc;
+    const takePerc = marketContext.params.takePerc;
+
+    const maxTakePortPerc = marketContext.params.maxTakePortPerc;
+    const maxTakePortNotional = marketContext.params.maxTakePortNotional;
+    const minTakeNotional = marketContext.params.minTakeNotional;
+    const maxTakeNotional = marketContext.params.maxTakeNotional;
+    const minTakePerc = marketContext.params.minTakePerc;
+    const maxTakePerc = marketContext.params.maxTakePerc;
+
+
     const leanCoeff = marketContext.params.leanCoeff;
     const edge = (marketContext.params.edge || 0.0015) + ftxSpread / 2;
     const bias = marketContext.params.bias;
-    const takePerc = marketContext.params.takePerc;
     const mispriced = marketContext.params.mispriceThresh;
     const requoteThresh = marketContext.params.requoteThresh;
     const takeSpammers = marketContext.params.takeSpammers;
@@ -833,10 +842,15 @@ function makeMarketUpdateInstructions(
         size * 4.95,
     );
 
+    console.log('--------------------------------------------------------------------------------------------------')
     console.log(`${marketContext.marketName}`)
-
+    console.log(`${marketContext.marketName}: liquidity provision info`)
+    console.log(`${marketContext.marketName}: tight quote:`)
     console.log(`${marketContext.marketName}: ${modelBidPrice} at ${modelAskPrice}, ${nativeBidSize} by ${nativeAskSize}`)
-    console.log(`${marketContext.marketName}2: ${modelBidPrice2} at ${modelAskPrice2}, ${nativeBidSize2} by ${nativeAskSize2}`)
+    console.log(`${marketContext.marketName}: wide quote:`)
+    console.log(`${marketContext.marketName}: ${modelBidPrice2} at ${modelAskPrice2}, ${nativeBidSize2} by ${nativeAskSize2}`)
+    console.log('--------------------------------------------------------------------------------------------------')
+
 
     const bestBid = bids.getBest();
     const bestAsk = asks.getBest();
@@ -917,40 +931,120 @@ function makeMarketUpdateInstructions(
     //TODO: implement some sort of scaling method to use more size on larger mispricing
     const takeSize = (equity * takePerc) / fairValue;
 
-
-
     let mispricedBid = (1 + mispriced) * fairValue;
     let mispricedAsk = (1 - mispriced) * fairValue;
 
+    let hitBidSize = (equity * takePerc) / mispricedBid;
+    let liftAskSize = (equity * takePerc) / mispricedBid;
+
+
+
     let [takerModelBid, nativeBidSize_Taker] = market.uiToNativePriceQuantity(
         mispricedBid,
-        takeSize
+        hitBidSize,
     );
     let [takerModelAsk, nativeAskSize_Taker] = market.uiToNativePriceQuantity(
         mispricedAsk,
-        takeSize
+        liftAskSize,
     );
 
+
+    //taker logic info
+    let notionalHitBidSize = mispricedBid * hitBidSize;
+    let notionalLiftAskSize = mispricedAsk * liftAskSize;
+
+    console.log('--------------------------------------------------------------------------------------------------')
+    console.log(`${marketContext.marketName}: taker info`)
+    console.log(`${marketContext.marketName}: per-trade %: ${takePerc}`)
     console.log(`${marketContext.marketName}: fairvalue: ${fairValue}`)
     console.log(`${marketContext.marketName}: threshold: ${mispriced}`)
     console.log(`${marketContext.marketName}: lift offer below ${mispricedAsk}`)
+    console.log(`for $${notionalLiftAskSize}`)
     console.log(`${marketContext.marketName}: hit bid above ${mispricedBid}`)
+    console.log(`for $${notionalHitBidSize}`)
+    console.log('--------------------------------------------------------------------------------------------------')
 
-    console.log(`seconds since boot: ${Date.now() / 1000 - bootTime}`)
-    console.log(`timelimit: ${timeLimit}`)
-    console.log(`seconds since last trade: ${Date.now() / 1000 - lastTradeTime}`)
-    //console.log(`last trade time was: ${Date.now() - lastTradeTime} seconds ago`)
-
+    //timing info
+    //#region
+    let secondsSinceBoot = Date.now() / 1000 - bootTime;
+    let secondSinceLastTrade = Date.now() / 1000 - lastTradeTime;
+    let timeUntilTrade = Math.max(0, lastTradeTime + timeLimit - Date.now() / 1000);
     let inTimeout = (Date.now() / 1000 < lastTradeTime + timeLimit) ? true : false;
-    console.log(`time until trade: ${lastTradeTime + timeLimit - Date.now() / 1000}`)
+
+    /*
+    console.log('--------------------------------------------------------------------------------------------------')
+    console.log(`seconds since boot: ${secondsSinceBoot}`)
+    console.log(`timelimit: ${timeLimit}`)
+    console.log(`seconds since last trade: ${secondSinceLastTrade}`)
+    console.log(`time until trade: ${timeUntilTrade}`)
     console.log(`are we in timeout: ${inTimeout}`)
+    console.log('--------------------------------------------------------------------------------------------------')
+    //console.log(`last trade time was: ${Date.now() - lastTradeTime} seconds ago`)
+    */
+
+    //#endregion
+
+    //TODO: FIGURE OUT HOW SHORT POSITIONS ARE EXPRESSED
+    //position + portfolio info
+    let notionalPosition = basePos * oraclePrice;
+    let equityPerc = 100 * notionalPosition / equity
+    let intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
+    let intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
+    let intendedPositionChangeLiftAsk = notionalPosition + notionalHitBidSize;
+    let intendedPositionChangeLiftAskPerc = 100 * intendedPositionChangeLiftAsk / equity;
+
+    console.log('--------------------------------------------------------------------------------------------------')
+    console.log(`total equity: ${equity}`)
+    console.log(`${marketContext.marketName}: base position: ${basePos}`)
+    console.log(`${marketContext.marketName}: notional position: $${notionalPosition}`)
+    console.log(`${marketContext.marketName}: percent of equity: ${equityPerc} % `)
+    console.log(`${marketContext.marketName}: post-take percent of equity (hit bid): ${intendedPositionChangeHitBidPerc} % `)
+    console.log(`${marketContext.marketName}: post-take percent of equity (lift ask): ${intendedPositionChangeLiftAskPerc} % `)
+    console.log('--------------------------------------------------------------------------------------------------')
+
+    let allowLiftAsk = true;
+    let allowHitBid = true;
 
 
-    if (bestBid !== undefined && bestBid?.price > mispricedBid && !inTimeout) {
+    if (intendedPositionChangeHitBid < -maxTakePortNotional) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL POSITION LIMIT `)
+        console.log(`${marketContext.marketName}: intended hit bid would increase portfolio deployment to $${intendedPositionChangeHitBid}`)
+        console.log(`${marketContext.marketName}: this exceeds notional position limit of $-${maxTakePortNotional}`)
+    }
+    if (intendedPositionChangeHitBidPerc < -maxTakePortPerc * 100) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: PERCENTAGE POSITION LIMIT `)
+        console.log(`${marketContext.marketName}: intended hit bid would increase portfolio deployment to ${intendedPositionChangeHitBidPerc}%`)
+        console.log(`${marketContext.marketName}: this exceeds percentage position limit of -${maxTakePortPerc * 100}%`)
+    } else {
+        allowHitBid = true;
+    }
+
+    if (intendedPositionChangeLiftAsk > maxTakePortNotional) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL POSITION LIMIT `)
+        console.log(`${marketContext.marketName}: intended lift ask would increase portfolio deployment to $${intendedPositionChangeLiftAsk})`)
+        console.log(`${marketContext.marketName}: this exceeds notional position limit of $${maxTakePortNotional}`)
+    }
+    if (intendedPositionChangeLiftAskPerc > maxTakePortPerc * 100) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: PERCENTAGE POSITION LIMIT `)
+        console.log(`${marketContext.marketName}: intended lift ask would increase portfolio deployment to ${intendedPositionChangeLiftAskPerc}%`)
+        console.log(`${marketContext.marketName}: this exceeds percentage position limit of ${maxTakePortPerc * 100}%`)
+    } else {
+        allowHitBid = true;
+    }
+
+
+
+
+
+    if (bestBid !== undefined && bestBid?.price > mispricedBid && !inTimeout && allowHitBid) {
         console.log('--------------------------------------------------------------------------------------------------')
-        console.log(`${marketContext.marketName} mispriced by ${bestBid?.price / fairValue}`)
-        console.log(`${marketContext.marketName} bestBid: ${bestBid?.price} above ${mispricedBid}`)
-        console.log(`${marketContext.marketName}: selling ${nativeBidSize_Taker} at ${mispricedBid}`)
+        console.log(`${marketContext.marketName}: mispriced by ${bestBid?.price / fairValue} `)
+        console.log(`${marketContext.marketName}: bestBid: ${bestBid?.price} above ${mispricedBid} `)
+        console.log(`${marketContext.marketName}: selling ${nativeBidSize_Taker} at ${mispricedBid} `)
         console.log('--------------------------------------------------------------------------------------------------')
         const takerSell = makePlacePerpOrderInstruction(
             entropyProgramId,
@@ -972,11 +1066,11 @@ function makeMarketUpdateInstructions(
         //instructions.push(takerSell);
         lastTradeTime = Date.now() / 1000;
 
-    } else if (bestAsk !== undefined && bestAsk?.price < mispricedAsk && !inTimeout) {
+    } else if (bestAsk !== undefined && bestAsk?.price < mispricedAsk && !inTimeout && allowLiftAsk) {
         console.log('--------------------------------------------------------------------------------------------------')
-        console.log(`${marketContext.marketName} mispriced by ${bestAsk?.price / fairValue}`)
-        console.log(`${marketContext.marketName} bestAsk: ${bestAsk?.price} above ${mispricedAsk}`)
-        console.log(`${marketContext.marketName}: buying ${nativeBidSize_Taker} at ${mispricedAsk}`)
+        console.log(`${marketContext.marketName} mispriced by ${bestAsk?.price / fairValue} `)
+        console.log(`${marketContext.marketName} bestAsk: ${bestAsk?.price} above ${mispricedAsk} `)
+        console.log(`${marketContext.marketName}: buying ${nativeBidSize_Taker} at ${mispricedAsk} `)
         console.log('--------------------------------------------------------------------------------------------------')
         const takerBuy = makePlacePerpOrderInstruction(
             entropyProgramId,
@@ -1145,14 +1239,14 @@ function makeMarketUpdateInstructions(
 
         instructions.push(cancelAllInstr);
         //instructions.push(placeBidInstr);
-        instructions.push(placeBidInstr2);
+        //instructions.push(placeBidInstr2);
 
         //instructions.push(placeAskInstr);
-        instructions.push(placeAskInstr2);
+        //instructions.push(placeAskInstr2);
 
         /*
         console.log(
-            new Date().toISOString(), `${marketContext.marketName} Requoting sentBidPx: ${marketContext.sentBidPrice} newBidPx: ${bookAdjBid} sentAskPx: ${marketContext.sentAskPrice} newAskPx: ${bookAdjAsk} spread: ${bookAdjAsk.toNumber() - bookAdjBid.toNumber()}`,
+            new Date().toISOString(), `${ marketContext.marketName } Requoting sentBidPx: ${ marketContext.sentBidPrice } newBidPx: ${ bookAdjBid } sentAskPx: ${ marketContext.sentAskPrice } newAskPx: ${ bookAdjAsk } spread: ${ bookAdjAsk.toNumber() - bookAdjBid.toNumber() } `,
         );
         */
         marketContext.sentBidPrice = bookAdjBid.toNumber();
@@ -1161,7 +1255,7 @@ function makeMarketUpdateInstructions(
     } else {
         /*
         console.log(
-            new Date().toISOString(), `${marketContext.marketName} Not requoting... No need to move orders`,
+            new Date().toISOString(), `${ marketContext.marketName } Not requoting... No need to move orders`,
         );
         */
     }
@@ -1218,7 +1312,7 @@ async function onExit(
     }
     const txids = await Promise.all(txProms);
     txids.forEach((txid) => {
-        console.log(new Date().toISOString(), `cancel successful: ${txid.toString()}`);
+        console.log(new Date().toISOString(), `cancel successful: ${txid.toString()} `);
     });
     process.exit();
 }
