@@ -1,50 +1,49 @@
 {
-    "group": "mainnet.2",
-    "entropyAccountPubkey": "DKxPqq5vexW3JFZpZ2xJBA5ySFK6FruWFGajV4YiH4Am",
-    "interval": 500,
-    "batch": 2,
-    "assets": {
-      "BTC^2": {
-        "perp": {
-          "takePerc": 0.05,
-          "mispriceThresh": 0.05,
-          "sizePerc": 0.1,
-          "leanCoeff": 0.05,
-          "bias": 0.0,
-          "requoteThresh": 0.0001,
-          "takeSpammers": true,
-          "spammerCharge": 2,
-          "disableFtxBook": true,
-          "edge": 0.0015
-        }
-      },
-      "BTC": {
-        "perp": {
-          "takePerc": 0.05,
-          "mispriceThresh": 0.05,
-          "sizePerc": 0.05,
-          "leanCoeff": 0.01,
-          "bias": -0.0000,
-          "requoteThresh": 0.0001,
-          "takeSpammers": true,
-          "spammerCharge": 2,
-          "edge": 0.0015
-        }
-      },
-      "BTC_1D_IV": {
-        "perp": {
-          "takePerc": 0.05,
-          "mispriceThresh": 0.05,
-          "sizePerc": 0.01,
-          "leanCoeff": 0.001,
-          "bias": 0.0007,
-          "requoteThresh": 0.005,
-          "takeSpammers": true,
-          "spammerCharge": 2,
-          "disableFtxBook": true,
-          "edge": 0.03
-        }
+  "group": "mainnet.2",
+  "entropyAccountPubkey": "DKxPqq5vexW3JFZpZ2xJBA5ySFK6FruWFGajV4YiH4Am",
+  "interval": 500,
+  "batch": 2,
+  "assets": {
+    "BTC^2": {
+      "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
+        "sizePerc": 0.1,
+        "leanCoeff": 0.05,
+        "bias": 0.0,
+        "requoteThresh": 0.0001,
+        "takeSpammers": true,
+        "spammerCharge": 2,
+        "disableFtxBook": true,
+        "edge": 0.0015
+      }
+    },
+    "BTC": {
+      "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
+        "sizePerc": 0.05,
+        "leanCoeff": 0.01,
+        "bias": -0.0000,
+        "requoteThresh": 0.0001,
+        "takeSpammers": true,
+        "spammerCharge": 2,
+        "edge": 0.0015
+      }
+    },
+    "BTC_1D_IV": {
+      "perp": {
+        "takePerc": 0.05,
+        "mispriceThresh": 0.1,
+        "sizePerc": 0.01,
+        "leanCoeff": 0.001,
+        "bias": 0.0007,
+        "requoteThresh": 0.005,
+        "takeSpammers": true,
+        "spammerCharge": 2,
+        "disableFtxBook": true,
+        "edge": 0.03
       }
     }
   }
-  
+}
