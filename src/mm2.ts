@@ -675,7 +675,7 @@ function makeMarketUpdateInstructions(
   // console.log('chadBid: ', fairValue * (1 - edge + lean + bias + IVFundingOffset));
   // console.log('IV Funding Bias', IVFundingOffset);
 
-  let bidPrice = fairValue * (1 - edge + lean + bias + 1.3*IVFundingOffset);
+  let bidPrice = fairValue * (1 - edge + lean + bias + 0.5*IVFundingOffset);
   let askPrice = fairValue * (1 + edge + lean + bias + 1.7*IVFundingOffset);
 
   // console.log('bid notional: ', bidPrice * size);
