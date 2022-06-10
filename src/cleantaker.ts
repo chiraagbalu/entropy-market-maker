@@ -104,6 +104,8 @@ const entropyProgramId = groupIds.entropyProgramId;
 const entropyGroupKey = groupIds.publicKey;
 const control = { isRunning: true, interval: params.interval };
 
+
+
 //#endregion
 
 
@@ -386,6 +388,8 @@ async function fullMarketMaker() {
     //connection to client
     //#region
 
+
+
     console.log(new Date().toISOString(), "Loading Market Making Params", params);
     console.log(new Date().toISOString(), "Establishing Client Connection...");
     const connection = new Connection(
@@ -551,6 +555,10 @@ async function fullMarketMaker() {
 
     //#endregion
 
+
+
+
+
     //while running
     while (control.isRunning) {
         try {
@@ -575,6 +583,8 @@ async function fullMarketMaker() {
                 let ftxBook = marketContexts[i].tardisBook;
                 let ftxFundingRate = marketContexts[i].fundingRate;
                 let IVFundingOffset = 0;
+
+
 
                 //#endregion
 
@@ -703,6 +713,7 @@ function makeMarketUpdateInstructions(
     const bids = marketContext.bids;
     const asks = marketContext.asks;
 
+
     const oracleCache = cache.priceCache[marketIndex];
     const oraclePriceI8048 = oracleCache.price;
     const oraclePrice = group.cachePriceToUi(
@@ -771,6 +782,8 @@ function makeMarketUpdateInstructions(
 
     const basePos = perpAccount.getBasePositionUi(market);
     const fundingBias = ftxFunding || 0;
+
+    const timeLimit = marketContext.params.timeLimit;
 
     const sizePerc = marketContext.params.sizePerc;
     const leanCoeff = marketContext.params.leanCoeff;
@@ -903,6 +916,9 @@ function makeMarketUpdateInstructions(
 
     //TODO: implement some sort of scaling method to use more size on larger mispricing
     const takeSize = (equity * takePerc) / fairValue;
+
+
+
     let mispricedBid = (1 + mispriced) * fairValue;
     let mispricedAsk = (1 - mispriced) * fairValue;
 
@@ -920,8 +936,17 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: lift offer below ${mispricedAsk}`)
     console.log(`${marketContext.marketName}: hit bid above ${mispricedBid}`)
 
+    console.log(`seconds since boot: ${Date.now() / 1000 - bootTime}`)
+    console.log(`timelimit: ${timeLimit}`)
+    console.log(`seconds since last trade: ${Date.now() / 1000 - lastTradeTime}`)
+    //console.log(`last trade time was: ${Date.now() - lastTradeTime} seconds ago`)
 
-    if (bestBid !== undefined && bestBid?.price > mispricedBid) {
+    let inTimeout = (Date.now() / 1000 < lastTradeTime + timeLimit) ? true : false;
+    console.log(`time until trade: ${lastTradeTime + timeLimit - Date.now() / 1000}`)
+    console.log(`are we in timeout: ${inTimeout}`)
+
+
+    if (bestBid !== undefined && bestBid?.price > mispricedBid && !inTimeout) {
         console.log('--------------------------------------------------------------------------------------------------')
         console.log(`${marketContext.marketName} mispriced by ${bestBid?.price / fairValue}`)
         console.log(`${marketContext.marketName} bestBid: ${bestBid?.price} above ${mispricedBid}`)
@@ -944,9 +969,10 @@ function makeMarketUpdateInstructions(
             'sell',
             'ioc',
         );
-        instructions.push(takerSell);
+        //instructions.push(takerSell);
+        lastTradeTime = Date.now() / 1000;
 
-    } else if (bestAsk !== undefined && bestAsk?.price < mispricedAsk) {
+    } else if (bestAsk !== undefined && bestAsk?.price < mispricedAsk && !inTimeout) {
         console.log('--------------------------------------------------------------------------------------------------')
         console.log(`${marketContext.marketName} mispriced by ${bestAsk?.price / fairValue}`)
         console.log(`${marketContext.marketName} bestAsk: ${bestAsk?.price} above ${mispricedAsk}`)
@@ -969,7 +995,8 @@ function makeMarketUpdateInstructions(
             'buy',
             'ioc',
         );
-        instructions.push(takerBuy);
+        //instructions.push(takerBuy);
+        lastTradeTime = Date.now() / 1000;
     }
 
     //#endregion
@@ -1213,4 +1240,6 @@ process.on('unhandledRejection', function (err, promise) {
     );
 });
 
+let bootTime = Date.now() / 1000;
+let lastTradeTime = Date.now() / 1000 - 3600;
 startMarketMaker();
