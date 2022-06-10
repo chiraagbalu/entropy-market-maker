@@ -808,7 +808,7 @@ function makeMarketUpdateInstructions(
 
     //#endregion
 
-    //console logging
+    //special condition for btc^2
     //#region
 
 
@@ -819,7 +819,10 @@ function makeMarketUpdateInstructions(
 
     //#endregion
 
-    //bid ask stuff 
+    //main bot stuff
+    //#region
+
+    //liquidity provision
     //#region
 
     let bidPrice = fairValue * (1 - edge + lean + bias + 1.3 * IVFundingOffset);
@@ -919,16 +922,14 @@ function makeMarketUpdateInstructions(
     ];
 
 
-    //taker logic
+    //taking mispricings
+
+    //adjusting order info
     //#region
-    //if ftx pricing > best offer (ftx/BB: 31k/30k > mispricing)
-    //lift best offer
-    //if ftx pricing < best bid (BB/ftx: 31k/30k > mispricing)
-    //hit best bid
 
-    //fv 100: buy 95, sell 105
+    let allowLiftAsk = true;
+    let allowHitBid = true;
 
-    //TODO: implement some sort of scaling method to use more size on larger mispricing
     const takeSize = (equity * takePerc) / fairValue;
 
     let mispricedBid = (1 + mispriced) * fairValue;
@@ -948,10 +949,13 @@ function makeMarketUpdateInstructions(
         liftAskSize,
     );
 
+    //#endregion
 
-    //taker logic info
+    //per trade info
+    //#region
     let notionalHitBidSize = mispricedBid * hitBidSize;
     let notionalLiftAskSize = mispricedAsk * liftAskSize;
+
 
     console.log('--------------------------------------------------------------------------------------------------')
     console.log(`${marketContext.marketName}: taker info`)
@@ -963,6 +967,37 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: hit bid above ${mispricedBid}`)
     console.log(`for $${notionalHitBidSize}`)
     console.log('--------------------------------------------------------------------------------------------------')
+
+    //#endregion
+
+    //per trade limiting
+    //#region
+
+    if (notionalHitBidSize < minTakeNotional) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
+        console.log(`${marketContext.marketName}: intended hit bid would be ${notionalLiftAskSize}`)
+        console.log(`${marketContext.marketName}: this is less than notional per trade limit of $${minTakeNotional}`)
+    } else if (notionalHitBidSize > maxTakeNotional) {
+        allowHitBid = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
+        console.log(`${marketContext.marketName}: intended hit bid would be ${notionalLiftAskSize}`)
+        console.log(`${marketContext.marketName}: this is greater than notional per trade limit of $${maxTakeNotional}`)
+    }
+    if (notionalLiftAskSize < minTakeNotional) {
+        allowLiftAsk = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
+        console.log(`${marketContext.marketName}: intended lift ask would be ${notionalLiftAskSize}`)
+        console.log(`${marketContext.marketName}: this is less than notional per trade limit of $${minTakeNotional}`)
+
+    } else if (notionalLiftAskSize > maxTakeNotional) {
+        allowLiftAsk = false;
+        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
+        console.log(`${marketContext.marketName}: intended lift ask would be ${notionalLiftAskSize}`)
+        console.log(`${marketContext.marketName}: this is greater than notional per trade limit of $${maxTakeNotional}`)
+    }
+
+    //#endregion
 
     //timing info
     //#region
@@ -984,8 +1019,8 @@ function makeMarketUpdateInstructions(
 
     //#endregion
 
-    //TODO: FIGURE OUT HOW SHORT POSITIONS ARE EXPRESSED
     //position + portfolio info
+    //#region
     let notionalPosition = basePos * oraclePrice;
     let equityPerc = 100 * notionalPosition / equity
     let intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
@@ -1002,9 +1037,13 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: post-take percent of equity (lift ask): ${intendedPositionChangeLiftAskPerc} % `)
     console.log('--------------------------------------------------------------------------------------------------')
 
-    let allowLiftAsk = true;
-    let allowHitBid = true;
 
+
+
+    //#endregion
+
+    //position limiting
+    //#region
 
     if (intendedPositionChangeHitBid < -maxTakePortNotional) {
         allowHitBid = false;
@@ -1036,9 +1075,12 @@ function makeMarketUpdateInstructions(
         allowHitBid = true;
     }
 
+    //#endregion
 
+    //200k per week 
 
-
+    //taker instructions
+    //#region
 
     if (bestBid !== undefined && bestBid?.price > mispricedBid && !inTimeout && allowHitBid) {
         console.log('--------------------------------------------------------------------------------------------------')
@@ -1262,13 +1304,15 @@ function makeMarketUpdateInstructions(
 
     //other cases
     //#region
-
     // if instruction is only the sequence enforcement, then just send empty
     if (instructions.length === 1) {
         return [];
     } else {
         return instructions;
     }
+    //#endregion
+
+
     //#endregion
 }
 
