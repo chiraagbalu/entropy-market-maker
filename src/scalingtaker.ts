@@ -54,7 +54,7 @@ import { findProgramAddressSync } from '@project-serum/anchor/dist/cjs/utils/pub
 
 // File containing info of serum markets being quoted
 import IDS from './IDS.json';
-import { getMintDecimals } from '../node_modules/@project-serum/serum/lib/market';
+import { getMintDecimals } from '@project-serum/serum/lib/market';
 import Decimal from "decimal.js";
 import { privateEncrypt } from 'crypto';
 
@@ -934,6 +934,13 @@ function makeMarketUpdateInstructions(
 
     let mispricedBid = (1 + mispriced) * fairValue;
     let mispricedAsk = (1 - mispriced) * fairValue;
+
+    if (bestBid !== undefined) {
+        let cheapBid = bestBid?.price / fairValue;
+    }
+    if (bestAsk !== undefined) {
+        let richAsk = bestAsk?.price / fairValue;
+    }
 
     let hitBidSize = (equity * takePerc) / mispricedBid;
     let liftAskSize = (equity * takePerc) / mispricedBid;
