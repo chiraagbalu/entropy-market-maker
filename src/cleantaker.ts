@@ -938,17 +938,6 @@ function makeMarketUpdateInstructions(
     let hitBidSize = (equity * takePerc) / mispricedBid;
     let liftAskSize = (equity * takePerc) / mispricedBid;
 
-
-
-    let [takerModelBid, nativeBidSize_Taker] = market.uiToNativePriceQuantity(
-        mispricedBid,
-        hitBidSize,
-    );
-    let [takerModelAsk, nativeAskSize_Taker] = market.uiToNativePriceQuantity(
-        mispricedAsk,
-        liftAskSize,
-    );
-
     //#endregion
 
     //per trade info
@@ -964,37 +953,35 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: threshold: ${mispriced}`)
     console.log(`${marketContext.marketName}: lift offer below ${mispricedAsk}`)
     console.log(`for $${notionalLiftAskSize}`)
+    console.log(`liftAskSize: ${liftAskSize}`)
     console.log(`${marketContext.marketName}: hit bid above ${mispricedBid}`)
     console.log(`for $${notionalHitBidSize}`)
+    console.log(`hitBidSize: ${hitBidSize}`)
     console.log('--------------------------------------------------------------------------------------------------')
 
     //#endregion
 
-    //per trade limiting
+    //per trade resizing
     //#region
 
-    if (notionalHitBidSize < minTakeNotional) {
-        allowHitBid = false;
-        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
-        console.log(`${marketContext.marketName}: intended hit bid would be ${notionalLiftAskSize}`)
-        console.log(`${marketContext.marketName}: this is less than notional per trade limit of $${minTakeNotional}`)
-    } else if (notionalHitBidSize > maxTakeNotional) {
-        allowHitBid = false;
+    if (notionalHitBidSize > maxTakeNotional) {
         console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
         console.log(`${marketContext.marketName}: intended hit bid would be ${notionalLiftAskSize}`)
         console.log(`${marketContext.marketName}: this is greater than notional per trade limit of $${maxTakeNotional}`)
+        console.log(`${marketContext.marketName}: resizing down to trade limit of $${maxTakeNotional}`)
+        notionalHitBidSize = maxTakeNotional;
+        hitBidSize = notionalHitBidSize / mispricedBid;
+        console.log(`hitBidSize: ${hitBidSize}`)
     }
-    if (notionalLiftAskSize < minTakeNotional) {
-        allowLiftAsk = false;
-        console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
-        console.log(`${marketContext.marketName}: intended lift ask would be ${notionalLiftAskSize}`)
-        console.log(`${marketContext.marketName}: this is less than notional per trade limit of $${minTakeNotional}`)
 
-    } else if (notionalLiftAskSize > maxTakeNotional) {
-        allowLiftAsk = false;
+    if (notionalLiftAskSize > maxTakeNotional) {
         console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
         console.log(`${marketContext.marketName}: intended lift ask would be ${notionalLiftAskSize}`)
         console.log(`${marketContext.marketName}: this is greater than notional per trade limit of $${maxTakeNotional}`)
+        console.log(`${marketContext.marketName}: resizing down to trade limit of $${maxTakeNotional}`)
+        notionalLiftAskSize = maxTakeNotional;
+        liftAskSize = notionalLiftAskSize / mispricedAsk;
+        console.log(`liftAskSize: ${liftAskSize}`)
     }
 
     //#endregion
@@ -1025,7 +1012,7 @@ function makeMarketUpdateInstructions(
     let equityPerc = 100 * notionalPosition / equity
     let intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
     let intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
-    let intendedPositionChangeLiftAsk = notionalPosition + notionalHitBidSize;
+    let intendedPositionChangeLiftAsk = notionalPosition + notionalLiftAskSize;
     let intendedPositionChangeLiftAskPerc = 100 * intendedPositionChangeLiftAsk / equity;
 
     console.log('--------------------------------------------------------------------------------------------------')
@@ -1038,49 +1025,85 @@ function makeMarketUpdateInstructions(
     console.log('--------------------------------------------------------------------------------------------------')
 
 
-
-
     //#endregion
 
     //position limiting
     //#region
 
+    //resizes order if above position limit
+
     if (intendedPositionChangeHitBid < -maxTakePortNotional) {
-        allowHitBid = false;
         console.log(`${marketContext.marketName}: WARNING: NOTIONAL POSITION LIMIT `)
         console.log(`${marketContext.marketName}: intended hit bid would increase portfolio deployment to $${intendedPositionChangeHitBid}`)
         console.log(`${marketContext.marketName}: this exceeds notional position limit of $-${maxTakePortNotional}`)
+        console.log(`${marketContext.marketName}: resizing down to trade limit of $${maxTakePortNotional}`)
+        notionalHitBidSize = (maxTakePortNotional + notionalPosition);
+        intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
+        intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
+        console.log(`${marketContext.marketName}: new notional: $${intendedPositionChangeHitBid}`)
+        console.log(`${marketContext.marketName}: new percentage: ${intendedPositionChangeHitBidPerc}%`)
+        hitBidSize = notionalHitBidSize / mispricedBid;
+        console.log(`hitBidSize: ${hitBidSize}`)
     }
     if (intendedPositionChangeHitBidPerc < -maxTakePortPerc * 100) {
-        allowHitBid = false;
         console.log(`${marketContext.marketName}: WARNING: PERCENTAGE POSITION LIMIT `)
         console.log(`${marketContext.marketName}: intended hit bid would increase portfolio deployment to ${intendedPositionChangeHitBidPerc}%`)
         console.log(`${marketContext.marketName}: this exceeds percentage position limit of -${maxTakePortPerc * 100}%`)
-    } else {
-        allowHitBid = true;
+        console.log(`${marketContext.marketName}: resizing down to trade limit of ${maxTakePortPerc * 100}%`)
+        notionalHitBidSize = (maxTakePortPerc * equity + notionalPosition);
+        intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
+        intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
+        console.log(`${marketContext.marketName}: new notional: $${intendedPositionChangeHitBid}`)
+        console.log(`${marketContext.marketName}: new percentage: ${intendedPositionChangeHitBidPerc}%`)
+        hitBidSize = notionalHitBidSize / mispricedBid;
+        console.log(`hitBidSize: ${hitBidSize}`)
     }
 
     if (intendedPositionChangeLiftAsk > maxTakePortNotional) {
-        allowHitBid = false;
         console.log(`${marketContext.marketName}: WARNING: NOTIONAL POSITION LIMIT `)
-        console.log(`${marketContext.marketName}: intended lift ask would increase portfolio deployment to $${intendedPositionChangeLiftAsk})`)
+        console.log(`${marketContext.marketName}: intended lift ask would increase portfolio deployment to $${intendedPositionChangeLiftAsk}`)
         console.log(`${marketContext.marketName}: this exceeds notional position limit of $${maxTakePortNotional}`)
+        console.log(`${marketContext.marketName}: resizing down to trade limit of $${maxTakePortNotional}`)
+        notionalLiftAskSize = maxTakePortNotional - notionalPosition;
+        intendedPositionChangeLiftAsk = notionalPosition + notionalLiftAskSize;
+        intendedPositionChangeLiftAskPerc = 100 * intendedPositionChangeLiftAsk / equity;
+        console.log(`${marketContext.marketName}: new notional: $${intendedPositionChangeLiftAsk}`)
+        console.log(`${marketContext.marketName}: new percentage: ${intendedPositionChangeLiftAskPerc}%`)
+        liftAskSize = notionalLiftAskSize / mispricedAsk;
+        console.log(`liftAskSize: ${liftAskSize}`)
     }
     if (intendedPositionChangeLiftAskPerc > maxTakePortPerc * 100) {
-        allowHitBid = false;
         console.log(`${marketContext.marketName}: WARNING: PERCENTAGE POSITION LIMIT `)
         console.log(`${marketContext.marketName}: intended lift ask would increase portfolio deployment to ${intendedPositionChangeLiftAskPerc}%`)
-        console.log(`${marketContext.marketName}: this exceeds percentage position limit of ${maxTakePortPerc * 100}%`)
-    } else {
-        allowHitBid = true;
+        console.log(`${marketContext.marketName}: resizing down to trade limit of ${maxTakePortPerc * 100}%`)
+        notionalLiftAskSize = maxTakePortPerc * equity - notionalPosition;
+        intendedPositionChangeLiftAsk = notionalPosition + notionalLiftAskSize;
+        intendedPositionChangeLiftAskPerc = 100 * intendedPositionChangeLiftAsk / equity;
+        console.log(`${marketContext.marketName}: new notional: $${intendedPositionChangeLiftAsk}`)
+        console.log(`${marketContext.marketName}: new percentage: ${intendedPositionChangeLiftAskPerc}%`)
+        liftAskSize = notionalLiftAskSize / mispricedAsk;
+        console.log(`liftAskSize: ${liftAskSize}`)
+
+
     }
+
 
     //#endregion
 
-    //200k per week 
-
     //taker instructions
     //#region
+
+    let [takerModelBid, nativeBidSize_Taker] = market.uiToNativePriceQuantity(
+        mispricedBid,
+        hitBidSize,
+    );
+    let [takerModelAsk, nativeAskSize_Taker] = market.uiToNativePriceQuantity(
+        mispricedAsk,
+        liftAskSize,
+    );
+
+
+
 
     if (bestBid !== undefined && bestBid?.price > mispricedBid && !inTimeout && allowHitBid) {
         console.log('--------------------------------------------------------------------------------------------------')
