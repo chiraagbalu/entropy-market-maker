@@ -932,44 +932,20 @@ function makeMarketUpdateInstructions(
 
     //taking mispricings
 
-    //adjusting order info
+    //creating initial order info
     //#region
-
-    //fv = 100
-    //normal cond:
-    //bb = 95
-    //ba = 105
-    //bb/fv = 95
-    //ba/fv = 105
-    //we chill -> ba/fv > 100, bb/fv < 100
-    //mispriced cond: 
-    //bb = 105
-    //ba = 95
-    //bb/fv = 105
-    //ba/fv = 95
-    //oh shit! -> ba/fv < 100, bb/fv > 100
-    //buy cheap sell rich
-
-
-    let allowLiftAsk = true;
-    let allowHitBid = true;
 
     let bestBidAvailable = (bestBid !== undefined) ? bestBid?.price : 0;
     let bestAskAvailable = (bestAsk !== undefined) ? bestAsk?.price : 0;
 
-
     let cheapness = (Math.max(0, (-bestAskAvailable / fairValue) + 1));
     let richness = Math.max(0, (bestBidAvailable / fairValue) - 1);
-
-
-
 
     let hitBidSize = (equity * richness * scaling) / bestBidAvailable;
     let liftAskSize = (equity * cheapness * scaling) / bestAskAvailable;
 
     let notionalHitBidSize = bestBidAvailable * hitBidSize;
     let notionalLiftAskSize = bestAskAvailable * liftAskSize;
-
 
     let intendedPositionChangeHitBid = notionalPosition - notionalHitBidSize;
     let intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
@@ -978,7 +954,10 @@ function makeMarketUpdateInstructions(
 
     let resized = false;
 
+    //#endregion
 
+    //summary of search for edge each cycle logs
+    //#region
     console.log('--------------------------------------------------------------------------------------------------')
     console.log(`${marketContext.marketName}: edge info`)
     console.log(`${marketContext.marketName}: fairValue: ${fairValue}`)
@@ -989,28 +968,16 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: cheapness of best ask available is: ${cheapness * 100}%`)
     console.log(`${marketContext.marketName}: scaling: ${scaling}`)
     console.log('--------------------------------------------------------------------------------------------------')
-
-    //cheapness = (Math.max(minMispricing, cheapness));
-    //richness = Math.max(minMispricing, richness);
-
-    //#endregion
-
-
-    //per trade resizing
-    //#region
-
-
-
-
-
     //#endregion
 
     //timing info
     //#region
-    let secondsSinceBoot = Date.now() / 1000 - bootTime;
-    let secondSinceLastTrade = Date.now() / 1000 - lastTradeTime;
-    let timeUntilTrade = Math.max(0, lastTradeTime + timeLimit - Date.now() / 1000);
-    let inTimeout = (Date.now() / 1000 < lastTradeTime + timeLimit) ? true : false;
+    //let lastTradeTime = Date.now() / 1000 - 3600;
+    //let secondsSinceBoot = Date.now() / 1000 - bootTime;
+    //let secondSinceLastTrade = Date.now() / 1000 - lastTradeTime;
+    //let timeUntilTrade = Math.max(0, lastTradeTime + timeLimit - Date.now() / 1000);
+    //let inTimeout = (Date.now() / 1000 < lastTradeTime + timeLimit) ? true : false;
+    let inTimeout = false;
 
 
     /*
@@ -1027,30 +994,25 @@ function makeMarketUpdateInstructions(
 
     //#endregion
 
-    //position limiting
-    //#region
 
-    //resizes order if above position limit
-
-
-
-
-
-
-    //#endregion
 
     //taker instructions
     //#region
 
+    //sanity check logs for valid trade 
+    //#region
     console.log(`${marketContext.marketName}: best bid exists? ${bestBid !== undefined}`)
     console.log(`${marketContext.marketName}: best ask exists? ${bestAsk !== undefined}`)
     console.log(`${marketContext.marketName}: richness > minMispricing? ${richness > minMispricing}`)
     console.log(`${marketContext.marketName}: cheapness > minMispricing? ${cheapness > minMispricing}`)
     console.log(`${marketContext.marketName}: in timeout?  ${inTimeout}`)
     console.log('--------------------------------------------------------------------------------------------------')
+    //#endregion
 
     if (bestBid !== undefined && richness > minMispricing && !inTimeout) {
 
+        //per trade limiting
+        //#region
         if (notionalHitBidSize > maxTakeNotional) {
             resized = true;
             console.log(`${marketContext.marketName}: WARNING: NOTIONAL PER TRADE LIMIT `)
@@ -1063,6 +1025,10 @@ function makeMarketUpdateInstructions(
             intendedPositionChangeHitBidPerc = 100 * intendedPositionChangeHitBid / equity;
             console.log(`hitBidSize: ${hitBidSize}`)
         }
+        //#endregion
+
+        //position limiting     
+        //#region
 
         if (intendedPositionChangeHitBid < -maxTakePortNotional) {
             resized = true;
@@ -1094,11 +1060,18 @@ function makeMarketUpdateInstructions(
             console.log(`hitBidSize: ${hitBidSize}`)
         }
 
+        //#endregion
+
+        //translating to native price 
+        //#region
         let [takerModelBid, nativeBidSize_Taker] = market.uiToNativePriceQuantity(
             bestBidAvailable,
             hitBidSize,
         );
+        //#endregion
 
+        //console information for trade about to execute 
+        //#region
         console.log('--------------------------------------------------------------------------------------------------')
         console.log(`${marketContext.marketName}: planned capital utilization info`)
         console.log(`${marketContext.marketName}: richness of best bid available is: ${richness * 100}%`)
@@ -1115,7 +1088,10 @@ function makeMarketUpdateInstructions(
         console.log(`${marketContext.marketName}: best bid richness: ${richness * 100}%`)
         console.log(`${marketContext.marketName}: selling ${bestBidAvailable} with $${notionalHitBidSize}`)
         console.log('--------------------------------------------------------------------------------------------------')
+        //#endregion
 
+        //instruction block 
+        //#region
         const takerSell = makePlacePerpOrderInstruction(
             entropyProgramId,
             group.publicKey,
@@ -1134,9 +1110,13 @@ function makeMarketUpdateInstructions(
             'ioc',
         );
         //instructions.push(takerSell);
-        lastTradeTime = Date.now() / 1000;
+        //#endregion
+        //lastTradeTime = Date.now() / 1000;
 
     } else if (bestAsk !== undefined && cheapness > minMispricing && !inTimeout) {
+
+        //per trade limiting
+        //#region
 
         if (notionalLiftAskSize > maxTakeNotional) {
             resized = true;
@@ -1150,7 +1130,10 @@ function makeMarketUpdateInstructions(
             intendedPositionChangeLiftAskPerc = 100 * intendedPositionChangeLiftAsk / equity;
             console.log(`liftAskSize: ${liftAskSize}`)
         }
+        //#endregion
 
+        //position limiting    
+        //#region 
         if (intendedPositionChangeLiftAsk > maxTakePortNotional) {
             resized = true;
             console.log(`${marketContext.marketName}: WARNING: NOTIONAL POSITION LIMIT `)
@@ -1166,6 +1149,7 @@ function makeMarketUpdateInstructions(
             console.log(`liftAskSize: ${liftAskSize}`)
         }
 
+
         if (intendedPositionChangeLiftAskPerc > maxTakePortPerc * 100) {
             resized = true;
             console.log(`${marketContext.marketName}: WARNING: PERCENTAGE POSITION LIMIT `)
@@ -1179,14 +1163,19 @@ function makeMarketUpdateInstructions(
             liftAskSize = notionalLiftAskSize / bestAskAvailable;
             console.log(`liftAskSize: ${liftAskSize}`)
         }
+        //#endregion
 
+        //translating to native price 
+        //#region
         let [takerModelAsk, nativeAskSize_Taker] = market.uiToNativePriceQuantity(
             bestAskAvailable,
             liftAskSize,
         );
+        //#endregion
 
 
-
+        //console information for trade about to execute 
+        //#region
         console.log('--------------------------------------------------------------------------------------------------')
         console.log(`${marketContext.marketName}: planned capital utilization info`)
         console.log(`${marketContext.marketName}: cheapness of best ask available is: ${cheapness * 100}%`)
@@ -1204,6 +1193,10 @@ function makeMarketUpdateInstructions(
         console.log(`${marketContext.marketName}: buying ${bestAskAvailable} with $${notionalLiftAskSize}`)
         console.log('--------------------------------------------------------------------------------------------------')
 
+        //#endregion
+
+        //instruction block 
+        //#region
 
         const takerBuy = makePlacePerpOrderInstruction(
             entropyProgramId,
@@ -1223,7 +1216,8 @@ function makeMarketUpdateInstructions(
             'ioc',
         );
         //instructions.push(takerBuy);
-        lastTradeTime = Date.now() / 1000;
+        //lastTradeTime = Date.now() / 1000;
+        //#endregion
     }
 
     //#endregion
@@ -1470,5 +1464,5 @@ process.on('unhandledRejection', function (err, promise) {
 });
 
 let bootTime = Date.now() / 1000;
-let lastTradeTime = Date.now() / 1000 - 3600;
+
 startMarketMaker();
