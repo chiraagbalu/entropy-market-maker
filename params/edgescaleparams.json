@@ -6,15 +6,13 @@
   "assets": {
     "BTC^2": {
       "perp": {
+        "mispriceThresh": 0.005,
+        "mispriceScaling": 100,
         "maxTakePortPerc": 0.1,
         "maxTakePortNotional": 10,
-        "minTakeNotional": 0,
         "maxTakeNotional": 100,
-        "minTakePerc": 0.01,
-        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.3,
-        "mispriceThresh": 0.1,
         "sizePerc": 0.1,
         "leanCoeff": 0.05,
         "bias": 0.0,
@@ -27,15 +25,13 @@
     },
     "BTC": {
       "perp": {
+        "mispriceThresh": 0.005,
+        "mispriceScaling": 100,
         "maxTakePortPerc": 0.1,
         "maxTakePortNotional": 10,
-        "minTakeNotional": 0,
         "maxTakeNotional": 100,
-        "minTakePerc": 0.01,
-        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.05,
-        "mispriceThresh": 0.1,
         "sizePerc": 0.05,
         "leanCoeff": 0.01,
         "bias": -0.0000,
@@ -47,15 +43,13 @@
     },
     "BTC_1D_IV": {
       "perp": {
+        "mispriceThresh": 0.005,
+        "mispriceScaling": 100,
         "maxTakePortPerc": 0.1,
         "maxTakePortNotional": 10,
-        "minTakeNotional": 0,
         "maxTakeNotional": 100,
-        "minTakePerc": 0.01,
-        "maxTakePerc": 0.1,
         "timeLimit": 300,
         "takePerc": 0.05,
-        "mispriceThresh": 0.001,
         "sizePerc": 0.01,
         "leanCoeff": 0.001,
         "bias": 0.0007,
