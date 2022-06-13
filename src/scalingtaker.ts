@@ -972,13 +972,52 @@ function makeMarketUpdateInstructions(
 
     //timing info
     //#region
-    //let lastTradeTime = Date.now() / 1000 - 3600;
-    //let secondsSinceBoot = Date.now() / 1000 - bootTime;
-    //let secondSinceLastTrade = Date.now() / 1000 - lastTradeTime;
-    //let timeUntilTrade = Math.max(0, lastTradeTime + timeLimit - Date.now() / 1000);
-    //let inTimeout = (Date.now() / 1000 < lastTradeTime + timeLimit) ? true : false;
+
+    let secondsSinceBoot = Date.now() / 1000 - bootTime;
+    let secondSinceLastTradeBTC = Date.now() / 1000 - lastTradeTimeBTC;
+    let secondSinceLastTradeBTC_2 = Date.now() / 1000 - lastTradeTimeBTC_2;
+    let secondSinceLastTradeBTC_IV = Date.now() / 1000 - lastTradeTimeBTC_IV
+    let timeUntilTradeBTC = Math.max(0, lastTradeTimeBTC + timeLimit - Date.now() / 1000);
+    let timeUntilTradeBTC_2 = Math.max(0, lastTradeTimeBTC_2 + timeLimit - Date.now() / 1000);
+    let timeUntilTradeBTC_IV = Math.max(0, lastTradeTimeBTC_IV + timeLimit - Date.now() / 1000);
+
+    let inTimeoutBTC = (Date.now() / 1000 < lastTradeTimeBTC + timeLimit) ? true : false;
+    let inTimeoutBTC_2 = (Date.now() / 1000 < lastTradeTimeBTC_2 + timeLimit) ? true : false;
+    let inTimeoutBTC_IV = (Date.now() / 1000 < lastTradeTimeBTC_IV + timeLimit) ? true : false;
+
     let inTimeout = false;
 
+
+    if (marketContext.marketName == "BTC-PERP") {
+        console.log(`${marketContext.marketName}: timing info`)
+        console.log(`seconds since boot: ${secondsSinceBoot}`)
+        console.log(`timelimit: ${timeLimit}`)
+        console.log(`seconds since last trade: ${secondSinceLastTradeBTC}`)
+        console.log(`time until trade: ${timeUntilTradeBTC}`)
+        console.log(`are we in timeout: ${inTimeoutBTC}`)
+        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC} seconds ago`)
+        console.log('--------------------------------------------------------------------------------------------------')
+    }
+    if (marketContext.marketName == "BTC^2-PERP") {
+        console.log(`${marketContext.marketName}: timing info`)
+        console.log(`seconds since boot: ${secondsSinceBoot}`)
+        console.log(`timelimit: ${timeLimit}`)
+        console.log(`seconds since last trade: ${secondSinceLastTradeBTC_2}`)
+        console.log(`time until trade: ${timeUntilTradeBTC_2}`)
+        console.log(`are we in timeout: ${inTimeoutBTC_2}`)
+        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC_2} seconds ago`)
+        console.log('--------------------------------------------------------------------------------------------------')
+    }
+    if (marketContext.marketName == "BTC_1D_IV-PERP") {
+        console.log(`${marketContext.marketName}: timing info`)
+        console.log(`seconds since boot: ${secondsSinceBoot}`)
+        console.log(`timelimit: ${timeLimit}`)
+        console.log(`seconds since last trade: ${secondSinceLastTradeBTC_IV}`)
+        console.log(`time until trade: ${timeUntilTradeBTC_IV}`)
+        console.log(`are we in timeout: ${inTimeoutBTC_IV}`)
+        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC_IV} seconds ago`)
+        console.log('--------------------------------------------------------------------------------------------------')
+    }
 
     /*
     console.log(`${marketContext.marketName}: timing info`)
@@ -1009,7 +1048,7 @@ function makeMarketUpdateInstructions(
     console.log('--------------------------------------------------------------------------------------------------')
     //#endregion
 
-    if (bestBid !== undefined && richness > minMispricing && !inTimeout) {
+    if (bestBid !== undefined && richness > minMispricing) {
 
         //per trade limiting
         //#region
@@ -1109,9 +1148,22 @@ function makeMarketUpdateInstructions(
             'sell',
             'ioc',
         );
-        //instructions.push(takerSell);
+        if (marketContext.marketName == "BTC-PERP" && !inTimeoutBTC) {
+            lastTradeTimeBTC = Date.now() / 1000
+            //instructions.push(takerSell)
+        }
+
+        if (marketContext.marketName == "BTC^2-PERP" && !inTimeoutBTC_2) {
+            lastTradeTimeBTC_2 = Date.now() / 1000
+            //instructions.push(takerSell)
+        }
+
+        if (marketContext.marketName == "BTC_1D_IV-PERP" && !inTimeoutBTC_IV) {
+            lastTradeTimeBTC_IV = Date.now() / 1000;
+            //instructions.push(takerSell)
+        }
         //#endregion
-        //lastTradeTime = Date.now() / 1000;
+
 
     } else if (bestAsk !== undefined && cheapness > minMispricing && !inTimeout) {
 
@@ -1215,8 +1267,20 @@ function makeMarketUpdateInstructions(
             'buy',
             'ioc',
         );
-        //instructions.push(takerBuy);
-        //lastTradeTime = Date.now() / 1000;
+        if (marketContext.marketName == "BTC-PERP" && !inTimeoutBTC) {
+            lastTradeTimeBTC = Date.now() / 1000
+            //instructions.push(takerBuy);
+        }
+
+        if (marketContext.marketName == "BTC^2-PERP" && !inTimeoutBTC_2) {
+            lastTradeTimeBTC_2 = Date.now() / 1000
+            //instructions.push(takerBuy);
+        }
+
+        if (marketContext.marketName == "BTC_1D_IV-PERP" && !inTimeoutBTC_IV) {
+            lastTradeTimeBTC_IV = Date.now() / 1000;
+            //instructions.push(takerBuy);
+        }
         //#endregion
     }
 
@@ -1464,5 +1528,8 @@ process.on('unhandledRejection', function (err, promise) {
 });
 
 let bootTime = Date.now() / 1000;
+let lastTradeTimeBTC = Date.now() / 1000 - 3600;
+let lastTradeTimeBTC_2 = Date.now() / 1000 - 3600;
+let lastTradeTimeBTC_IV = Date.now() / 1000 - 3600;
 
 startMarketMaker();
