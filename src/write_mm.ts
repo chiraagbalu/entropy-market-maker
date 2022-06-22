@@ -1338,7 +1338,7 @@ function makeMarketUpdateInstructions(
 
     if (!inTimeoutWriting) {
         lastWriteTime = Date.now() / 1000
-        writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, bestBidAvailable, bestAskAvailable)
+        writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable)
     }
 
     //moving orders  
@@ -1477,6 +1477,7 @@ async function writeMarketStats(
     ftxBid,
     ftxAsk,
     fairValue,
+    oraclePrice,
     bestBid,
     bestAsk,
 ) {
@@ -1491,6 +1492,7 @@ async function writeMarketStats(
         ftxBid: ftxBid,
         ftxAsk: ftxAsk,
         fairValue: fairValue,
+        oraclePrice: oraclePrice,
         bestBid: bestBid,
         bestAsk: bestAsk,
     }
@@ -1587,6 +1589,7 @@ const MarketMakerData = db.sequelize.define(
         ftxBid: DataTypes.FLOAT,
         ftxAsk: DataTypes.FLOAT,
         fairValue: DataTypes.FLOAT,
+        oraclePrice: DataTypes.FLOAT,
         bestBid: DataTypes.FLOAT,
         bestAsk: DataTypes.FLOAT,
     },
