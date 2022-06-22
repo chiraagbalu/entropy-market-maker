@@ -1,4 +1,6 @@
 //importing stuff
+import { Sequelize, DataTypes } from "sequelize"
+import db, { sequelize } from "./index"
 import {
     Account,
     Commitment,
