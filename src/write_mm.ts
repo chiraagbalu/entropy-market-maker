@@ -775,6 +775,7 @@ function makeMarketUpdateInstructions(
     const fundingBias = ftxFunding || 0;
 
     const timeLimit = marketContext.params.timeLimit;
+    const writeLimit = 10;
 
     const sizePerc = marketContext.params.sizePerc;
     const takePerc = marketContext.params.takePerc;
@@ -1333,7 +1334,13 @@ function makeMarketUpdateInstructions(
     //#endregion
 
     //write data to sql
-    writeMarketStats(marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, bestBidAvailable, bestAskAvailable)
+    let inTimeoutWriting = (Date.now() / 1000 < lastWriteTime + writeLimit) ? true : false;
+
+    if (!inTimeoutWriting) {
+        lastWriteTime = Date.now() / 1000
+        writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, bestBidAvailable, bestAskAvailable)
+    }
+
     //moving orders  
     if (moveOrders) {
         // cancel all, requote
@@ -1460,6 +1467,7 @@ function makeMarketUpdateInstructions(
 }
 
 async function writeMarketStats(
+    time,
     marketName,
     basePos,
     myBid,
@@ -1473,6 +1481,7 @@ async function writeMarketStats(
     bestAsk,
 ) {
     const data = {
+        time: Date(),
         marketName: marketName,
         basePos: basePos,
         myBid: myBid,
@@ -1488,7 +1497,6 @@ async function writeMarketStats(
     try {
         MarketMakerData.bulkCreate(data)
         console.log("market maker stats inserted");
-
     }
     catch (err) {
         console.log("failed to insert market maker stats", `${err}`);
@@ -1496,23 +1504,6 @@ async function writeMarketStats(
 
 }
 
-function parse_file(file, globalId) {
-    // let data = fs.readFileSync("data/" + file, 'utf8');
-    // data = JSON.stringify(data);
-    // console.log(data);
-    const lines = require("./data/" + file);
-    lines.forEach(row => {
-        const entry = { GlobalID: globalId, time: row[0], spotPrice: row[1] };
-        data.push(entry);
-    });
-    try {
-        SpotPrices.bulkCreate(data, { ignoreDuplicates: true });
-        console.log("spotPrice stats inserted");
-    }
-    catch (err) {
-        console.log("failed to insert spotPrices stats", `${err}`);
-    }
-}
 
 //exit logic  
 async function onExit(
@@ -1577,6 +1568,7 @@ process.on('unhandledRejection', function (err, promise) {
 });
 
 let bootTime = Date.now() / 1000;
+let lastWriteTime = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC_2 = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC_IV = Date.now() / 1000 - 3600;
@@ -1586,11 +1578,17 @@ startMarketMaker();
 const MarketMakerData = db.sequelize.define(
     "market_maker_data",
     {
-        GlobalID: { type: DataTypes.STRING, allowNull: false },
         time: DataTypes.DATE,
+        marketName: DataTypes.STRING,
+        myBid: DataTypes.FLOAT,
+        myAsk: DataTypes.FLOAT,
+        myBid2: DataTypes.FLOAT,
+        myAsk2: DataTypes.FLOAT,
+        ftxBid: DataTypes.FLOAT,
+        ftxAsk: DataTypes.FLOAT,
+        fairValue: DataTypes.FLOAT,
         bestBid: DataTypes.FLOAT,
         bestAsk: DataTypes.FLOAT,
-        fairValue: DataTypes.FLOAT
     },
     {
         timestamps: true,
