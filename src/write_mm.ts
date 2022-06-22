@@ -389,9 +389,6 @@ async function listenFtxFundingRates(marketContexts: MarketContext[]) {
 async function fullMarketMaker() {
     //connection to client
     //#region
-
-
-
     console.log(new Date().toISOString(), "Loading Market Making Params", params);
     console.log(new Date().toISOString(), "Establishing Client Connection...");
     const connection = new Connection(
@@ -403,10 +400,8 @@ async function fullMarketMaker() {
 
     //#endregion
 
-
     //load groups
     //#region
-
     console.log(new Date().toISOString(), "Loading Entropy Market Groups...");
     const entropyGroup = await client.getEntropyGroup(entropyGroupKey);
 
@@ -557,10 +552,6 @@ async function fullMarketMaker() {
 
     //#endregion
 
-
-
-
-
     //while running
     while (control.isRunning) {
         try {
@@ -585,8 +576,6 @@ async function fullMarketMaker() {
                 let ftxBook = marketContexts[i].tardisBook;
                 let ftxFundingRate = marketContexts[i].fundingRate;
                 let IVFundingOffset = 0;
-
-
 
                 //#endregion
 
@@ -893,6 +882,7 @@ function makeMarketUpdateInstructions(
 
     //#endregion
 
+
     //moving orders based on updates
     //#region
 
@@ -1034,8 +1024,6 @@ function makeMarketUpdateInstructions(
 
 
     //#endregion
-
-
 
     //taker instructions
     //#region
@@ -1344,6 +1332,8 @@ function makeMarketUpdateInstructions(
     }
     //#endregion
 
+    //write data to sql
+    writeMarketStats(marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, bestBidAvailable, bestAskAvailable)
     //moving orders  
     if (moveOrders) {
         // cancel all, requote
@@ -1464,7 +1454,64 @@ function makeMarketUpdateInstructions(
     //#endregion
 
 
+
+
     //#endregion
+}
+
+async function writeMarketStats(
+    marketName,
+    basePos,
+    myBid,
+    myAsk,
+    myBid2,
+    myAsk2,
+    ftxBid,
+    ftxAsk,
+    fairValue,
+    bestBid,
+    bestAsk,
+) {
+    const data = {
+        marketName: marketName,
+        basePos: basePos,
+        myBid: myBid,
+        myAsk: myAsk,
+        myBid2: myBid2,
+        myAsk2: myAsk2,
+        ftxBid: ftxBid,
+        ftxAsk: ftxAsk,
+        fairValue: fairValue,
+        bestBid: bestBid,
+        bestAsk: bestAsk,
+    }
+    try {
+        MarketMakerData.bulkCreate(data)
+        console.log("market maker stats inserted");
+
+    }
+    catch (err) {
+        console.log("failed to insert market maker stats", `${err}`);
+    }
+
+}
+
+function parse_file(file, globalId) {
+    // let data = fs.readFileSync("data/" + file, 'utf8');
+    // data = JSON.stringify(data);
+    // console.log(data);
+    const lines = require("./data/" + file);
+    lines.forEach(row => {
+        const entry = { GlobalID: globalId, time: row[0], spotPrice: row[1] };
+        data.push(entry);
+    });
+    try {
+        SpotPrices.bulkCreate(data, { ignoreDuplicates: true });
+        console.log("spotPrice stats inserted");
+    }
+    catch (err) {
+        console.log("failed to insert spotPrices stats", `${err}`);
+    }
 }
 
 //exit logic  
