@@ -58,7 +58,9 @@ import { findProgramAddressSync } from '@project-serum/anchor/dist/cjs/utils/pub
 import IDS from './IDS.json';
 import { getMintDecimals, _MARKET_STAT_LAYOUT_V1 } from '@project-serum/serum/lib/market';
 import Decimal from "decimal.js";
-import { privateEncrypt } from 'crypto';
+import { Hash, privateEncrypt } from 'crypto';
+import { number, string } from "yargs";
+import { Map } from "typescript";
 
 require('dotenv').config({ path: '.env' });
 
@@ -540,6 +542,9 @@ async function fullMarketMaker() {
 
     //#endregion
 
+    //#region 
+    //set up timer stuff
+
 
     //cancel orders
     //#region
@@ -576,6 +581,9 @@ async function fullMarketMaker() {
                 let ftxBook = marketContexts[i].tardisBook;
                 let ftxFundingRate = marketContexts[i].fundingRate;
                 let IVFundingOffset = 0;
+
+                let writeTimerMap = { marketName: String, lastWrittenTime: number }
+                let takeTimerMap = { marketname: String, lastTakeTime: number }
 
                 //#endregion
 
@@ -711,6 +719,8 @@ function makeMarketUpdateInstructions(
         oraclePriceI8048, marketIndex
     );
 
+
+
     //#endregion
 
     //update log
@@ -775,7 +785,7 @@ function makeMarketUpdateInstructions(
     const fundingBias = ftxFunding || 0;
 
     const timeLimit = marketContext.params.timeLimit;
-    const writeLimit = 10;
+    const writeLimit = 2;
 
     const sizePerc = marketContext.params.sizePerc;
     const takePerc = marketContext.params.takePerc;
@@ -1334,12 +1344,14 @@ function makeMarketUpdateInstructions(
     //#endregion
 
     //write data to sql
-    let inTimeoutWriting = (Date.now() / 1000 < lastWriteTime + writeLimit) ? true : false;
-
-    if (!inTimeoutWriting) {
-        lastWriteTime = Date.now() / 1000
+    writeTimerMap[marketContext.marketName] = (writeTimerMap[marketContext.marketName] != null) ? writeTimerMap[marketContext.marketName] : 0
+    console.log(`time since last write: ${Date.now() / 1000 - writeTimerMap[marketContext.marketName]}`)
+    if (Date.now() / 1000 - writeTimerMap[marketContext.marketName] > 10) {
+        console.log(`${marketContext.marketName}: writing market stats`)
+        writeTimerMap[marketContext.marketName] = Date.now() / 1000
         writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable)
     }
+
 
     //moving orders  
     if (moveOrders) {
@@ -1466,6 +1478,7 @@ function makeMarketUpdateInstructions(
     //#endregion
 }
 
+
 async function writeMarketStats(
     time,
     marketName,
@@ -1481,8 +1494,8 @@ async function writeMarketStats(
     bestBid,
     bestAsk,
 ) {
-    const data = {
-        time: Date(),
+    const data = [{
+        time: time,
         marketName: marketName,
         basePos: basePos,
         myBid: myBid,
@@ -1495,9 +1508,10 @@ async function writeMarketStats(
         oraclePrice: oraclePrice,
         bestBid: bestBid,
         bestAsk: bestAsk,
-    }
+    }]
     try {
-        MarketMakerData.bulkCreate(data)
+        console.log(data)
+        await MarketMakerData.bulkCreate(data)
         console.log("market maker stats inserted");
     }
     catch (err) {
@@ -1570,18 +1584,33 @@ process.on('unhandledRejection', function (err, promise) {
 });
 
 let bootTime = Date.now() / 1000;
-let lastWriteTime = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC_2 = Date.now() / 1000 - 3600;
 let lastTradeTimeBTC_IV = Date.now() / 1000 - 3600;
+let writeTimerMap = { marketName: string, lastWriteTime: number }
+let takeTimerMap = { marketName: string, lastTakeTime: number }
 
-startMarketMaker();
+
+const TestDataMM = db.sequelize.define(
+    "test_data_mm",
+    {
+        basePos: DataTypes.FLOAT,
+    },
+    {
+        timestamps: true,
+    }
+)
+sequelize.sync({ alter: true })
+TestDataMM.removeAttribute("id")
+
+//export default TestDataMM
 
 const MarketMakerData = db.sequelize.define(
     "market_maker_data",
     {
         time: DataTypes.DATE,
         marketName: DataTypes.STRING,
+        basePos: DataTypes.FLOAT,
         myBid: DataTypes.FLOAT,
         myAsk: DataTypes.FLOAT,
         myBid2: DataTypes.FLOAT,
@@ -1600,6 +1629,9 @@ const MarketMakerData = db.sequelize.define(
 sequelize.sync({ alter: true })
 MarketMakerData.removeAttribute("id")
 
-export default MarketMakerData
+//export MarketMakerData
+
+startMarketMaker();
+
 
 
