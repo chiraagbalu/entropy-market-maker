@@ -61,6 +61,7 @@ import Decimal from "decimal.js";
 import { Hash, privateEncrypt } from 'crypto';
 import { number, string } from "yargs";
 import { Map } from "typescript";
+import { time } from "console";
 
 require('dotenv').config({ path: '.env' });
 
@@ -785,7 +786,7 @@ function makeMarketUpdateInstructions(
     const fundingBias = ftxFunding || 0;
 
     const timeLimit = marketContext.params.timeLimit;
-    const writeLimit = 2;
+    const writeLimit = 10;
 
     const sizePerc = marketContext.params.sizePerc;
     const takePerc = marketContext.params.takePerc;
@@ -973,68 +974,6 @@ function makeMarketUpdateInstructions(
     console.log('--------------------------------------------------------------------------------------------------')
     //#endregion
 
-    //timing info
-    //#region
-
-    let secondsSinceBoot = Date.now() / 1000 - bootTime;
-    let secondSinceLastTradeBTC = Date.now() / 1000 - lastTradeTimeBTC;
-    let secondSinceLastTradeBTC_2 = Date.now() / 1000 - lastTradeTimeBTC_2;
-    let secondSinceLastTradeBTC_IV = Date.now() / 1000 - lastTradeTimeBTC_IV
-    let timeUntilTradeBTC = Math.max(0, lastTradeTimeBTC + timeLimit - Date.now() / 1000);
-    let timeUntilTradeBTC_2 = Math.max(0, lastTradeTimeBTC_2 + timeLimit - Date.now() / 1000);
-    let timeUntilTradeBTC_IV = Math.max(0, lastTradeTimeBTC_IV + timeLimit - Date.now() / 1000);
-
-    let inTimeoutBTC = (Date.now() / 1000 < lastTradeTimeBTC + timeLimit) ? true : false;
-    let inTimeoutBTC_2 = (Date.now() / 1000 < lastTradeTimeBTC_2 + timeLimit) ? true : false;
-    let inTimeoutBTC_IV = (Date.now() / 1000 < lastTradeTimeBTC_IV + timeLimit) ? true : false;
-
-    let inTimeout = false;
-
-
-    if (marketContext.marketName == "BTC-PERP") {
-        console.log(`${marketContext.marketName}: timing info`)
-        console.log(`seconds since boot: ${secondsSinceBoot}`)
-        console.log(`timelimit: ${timeLimit}`)
-        console.log(`seconds since last trade: ${secondSinceLastTradeBTC}`)
-        console.log(`time until trade: ${timeUntilTradeBTC}`)
-        console.log(`are we in timeout: ${inTimeoutBTC}`)
-        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC} seconds ago`)
-        console.log('--------------------------------------------------------------------------------------------------')
-    }
-    if (marketContext.marketName == "BTC^2-PERP") {
-        console.log(`${marketContext.marketName}: timing info`)
-        console.log(`seconds since boot: ${secondsSinceBoot}`)
-        console.log(`timelimit: ${timeLimit}`)
-        console.log(`seconds since last trade: ${secondSinceLastTradeBTC_2}`)
-        console.log(`time until trade: ${timeUntilTradeBTC_2}`)
-        console.log(`are we in timeout: ${inTimeoutBTC_2}`)
-        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC_2} seconds ago`)
-        console.log('--------------------------------------------------------------------------------------------------')
-    }
-    if (marketContext.marketName == "BTC_1D_IV-PERP") {
-        console.log(`${marketContext.marketName}: timing info`)
-        console.log(`seconds since boot: ${secondsSinceBoot}`)
-        console.log(`timelimit: ${timeLimit}`)
-        console.log(`seconds since last trade: ${secondSinceLastTradeBTC_IV}`)
-        console.log(`time until trade: ${timeUntilTradeBTC_IV}`)
-        console.log(`are we in timeout: ${inTimeoutBTC_IV}`)
-        console.log(`last trade time was: ${Date.now() / 1000 - lastTradeTimeBTC_IV} seconds ago`)
-        console.log('--------------------------------------------------------------------------------------------------')
-    }
-
-    /*
-    console.log(`${marketContext.marketName}: timing info`)
-    console.log(`seconds since boot: ${secondsSinceBoot}`)
-    console.log(`timelimit: ${timeLimit}`)
-    console.log(`seconds since last trade: ${secondSinceLastTrade}`)
-    console.log(`time until trade: ${timeUntilTrade}`)
-    console.log(`are we in timeout: ${inTimeout}`)
-    console.log(`last trade time was: ${Date.now() - lastTradeTime} seconds ago`)
-    console.log('--------------------------------------------------------------------------------------------------')
-    */
-
-
-    //#endregion
 
     //taker instructions
     //#region
@@ -1045,9 +984,18 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: best ask exists? ${bestAsk !== undefined}`)
     console.log(`${marketContext.marketName}: richness > minMispricing? ${richness > minMispricing}`)
     console.log(`${marketContext.marketName}: cheapness > minMispricing? ${cheapness > minMispricing}`)
-    console.log(`${marketContext.marketName}: in timeout?  ${inTimeout}`)
+    console.log(`${marketContext.marketName}: in timeout?  ${Date.now() / 1000 - takeTimerMap[marketContext.marketName] < timeLimit}`)
     console.log('--------------------------------------------------------------------------------------------------')
     //#endregion
+
+    //timing info
+    //#region 
+    takeTimerMap[marketContext.marketName] = (takeTimerMap[marketContext.marketName] != null) ? takeTimerMap[marketContext.marketName] : 0
+    console.log(`${marketContext.marketName}: time since last take: ${Date.now() / 1000 - takeTimerMap[marketContext.marketName]}`)
+    console.log(`${marketContext.marketName}: time until next take: ${Math.max(0, takeTimerMap[marketContext.marketName] + timeLimit - Date.now() / 1000)}`)
+    console.log(`${marketContext.marketName}: take limit: ${timeLimit}`)
+    //#endregion    
+
 
     if (bestBid !== undefined && richness > minMispricing) {
 
@@ -1149,24 +1097,16 @@ function makeMarketUpdateInstructions(
             'sell',
             'ioc',
         );
-        if (marketContext.marketName == "BTC-PERP" && !inTimeoutBTC) {
-            lastTradeTimeBTC = Date.now() / 1000
-            //instructions.push(takerSell)
+
+        if (Date.now() / 1000 - takeTimerMap[marketContext.marketName] > timeLimit) {
+            writeTimerMap[marketContext.marketName] = Date.now() / 1000
+            //instructions.push(takerBuy);
         }
 
-        if (marketContext.marketName == "BTC^2-PERP" && !inTimeoutBTC_2) {
-            lastTradeTimeBTC_2 = Date.now() / 1000
-            //instructions.push(takerSell)
-        }
-
-        if (marketContext.marketName == "BTC_1D_IV-PERP" && !inTimeoutBTC_IV) {
-            lastTradeTimeBTC_IV = Date.now() / 1000;
-            //instructions.push(takerSell)
-        }
         //#endregion
 
 
-    } else if (bestAsk !== undefined && cheapness > minMispricing && !inTimeout) {
+    } else if (bestAsk !== undefined && cheapness > minMispricing) {
 
         //per trade limiting
         //#region
@@ -1268,6 +1208,16 @@ function makeMarketUpdateInstructions(
             'buy',
             'ioc',
         );
+
+
+
+        if (Date.now() / 1000 - takeTimerMap[marketContext.marketName] > timeLimit) {
+            writeTimerMap[marketContext.marketName] = Date.now() / 1000
+            //instructions.push(takerBuy);
+        }
+
+
+        /*
         if (marketContext.marketName == "BTC-PERP" && !inTimeoutBTC) {
             lastTradeTimeBTC = Date.now() / 1000
             //instructions.push(takerBuy);
@@ -1282,6 +1232,7 @@ function makeMarketUpdateInstructions(
             lastTradeTimeBTC_IV = Date.now() / 1000;
             //instructions.push(takerBuy);
         }
+        */
         //#endregion
     }
 
@@ -1344,9 +1295,13 @@ function makeMarketUpdateInstructions(
     //#endregion
 
     //write data to sql
+    console.log(`${marketContext.marketName}: time since last write: ${Date.now() / 1000 - writeTimerMap[marketContext.marketName]}`)
+    console.log(`${marketContext.marketName}: time until next write: ${Math.max(0, writeTimerMap[marketContext.marketName] + writeLimit - Date.now() / 1000)}`)
+    console.log(`${marketContext.marketName}: write limit: ${writeLimit}`)
+
+
     writeTimerMap[marketContext.marketName] = (writeTimerMap[marketContext.marketName] != null) ? writeTimerMap[marketContext.marketName] : 0
-    console.log(`time since last write: ${Date.now() / 1000 - writeTimerMap[marketContext.marketName]}`)
-    if (Date.now() / 1000 - writeTimerMap[marketContext.marketName] > 10) {
+    if (Date.now() / 1000 - writeTimerMap[marketContext.marketName] > writeLimit) {
         console.log(`${marketContext.marketName}: writing market stats`)
         writeTimerMap[marketContext.marketName] = Date.now() / 1000
         writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable)
