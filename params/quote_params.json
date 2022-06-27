@@ -1,7 +1,7 @@
 {
   "group": "mainnet.2",
   "entropyAccountPubkey": "AvhFJjcR3upthCoecmJkarFAxBopqcg6SAFP8YpdLBiu",
-  "interval": 500,
+  "interval": 1000,
   "batch": 2,
   "assets": {
     "BTC^2": {
