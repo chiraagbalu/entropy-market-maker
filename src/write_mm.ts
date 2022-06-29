@@ -1215,24 +1215,6 @@ function makeMarketUpdateInstructions(
             writeTimerMap[marketContext.marketName] = Date.now() / 1000
             //instructions.push(takerBuy);
         }
-
-
-        /*
-        if (marketContext.marketName == "BTC-PERP" && !inTimeoutBTC) {
-            lastTradeTimeBTC = Date.now() / 1000
-            //instructions.push(takerBuy);
-        }
-
-        if (marketContext.marketName == "BTC^2-PERP" && !inTimeoutBTC_2) {
-            lastTradeTimeBTC_2 = Date.now() / 1000
-            //instructions.push(takerBuy);
-        }
-
-        if (marketContext.marketName == "BTC_1D_IV-PERP" && !inTimeoutBTC_IV) {
-            lastTradeTimeBTC_IV = Date.now() / 1000;
-            //instructions.push(takerBuy);
-        }
-        */
         //#endregion
     }
 
@@ -1298,13 +1280,15 @@ function makeMarketUpdateInstructions(
     console.log(`${marketContext.marketName}: time since last write: ${Date.now() / 1000 - writeTimerMap[marketContext.marketName]}`)
     console.log(`${marketContext.marketName}: time until next write: ${Math.max(0, writeTimerMap[marketContext.marketName] + writeLimit - Date.now() / 1000)}`)
     console.log(`${marketContext.marketName}: write limit: ${writeLimit}`)
-
+    console.log(payer.publicKey.toString())
+    const payerPK = payer.publicKey.toString()
+    const now = Date.now()
 
     writeTimerMap[marketContext.marketName] = (writeTimerMap[marketContext.marketName] != null) ? writeTimerMap[marketContext.marketName] : 0
-    if (Date.now() / 1000 - writeTimerMap[marketContext.marketName] > writeLimit) {
+    if (now / 1000 - writeTimerMap[marketContext.marketName] > writeLimit) {
         console.log(`${marketContext.marketName}: writing market stats`)
-        writeTimerMap[marketContext.marketName] = Date.now() / 1000
-        writeMarketStats(Date(), marketContext.marketName, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable)
+        writeTimerMap[marketContext.marketName] = now / 1000
+        writeMarketStats(now, marketContext.marketName, payerPK, equity, equityPerc, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable, cheapness, richness)
     }
 
 
@@ -1437,32 +1421,42 @@ function makeMarketUpdateInstructions(
 async function writeMarketStats(
     time,
     marketName,
+    payerPK,
+    equity,
+    leverage,
     basePos,
     myBid,
     myAsk,
     myBid2,
     myAsk2,
-    ftxBid,
-    ftxAsk,
+    modelBid,
+    modelAsk,
     fairValue,
     oraclePrice,
     bestBid,
     bestAsk,
+    cheapness,
+    richness
 ) {
     const data = [{
         time: time,
         marketName: marketName,
+        payerPK: payerPK,
+        equity: equity,
+        leverage: leverage,
         basePos: basePos,
         myBid: myBid,
         myAsk: myAsk,
         myBid2: myBid2,
         myAsk2: myAsk2,
-        ftxBid: ftxBid,
-        ftxAsk: ftxAsk,
+        modelBid: modelBid,
+        modelAsk: modelAsk,
         fairValue: fairValue,
         oraclePrice: oraclePrice,
         bestBid: bestBid,
         bestAsk: bestAsk,
+        cheapness: cheapness,
+        richness: richness,
     }]
     try {
         console.log(data)
@@ -1538,48 +1532,34 @@ process.on('unhandledRejection', function (err, promise) {
     );
 });
 
-let bootTime = Date.now() / 1000;
-let lastTradeTimeBTC = Date.now() / 1000 - 3600;
-let lastTradeTimeBTC_2 = Date.now() / 1000 - 3600;
-let lastTradeTimeBTC_IV = Date.now() / 1000 - 3600;
+
 let writeTimerMap = { marketName: string, lastWriteTime: number }
 let takeTimerMap = { marketName: string, lastTakeTime: number }
 
 
-const TestDataMM = db.sequelize.define(
-    "test_data_mm",
-    {
-        basePos: DataTypes.FLOAT,
-    },
-    {
-        timestamps: true,
-    }
-)
-sequelize.sync({ alter: true })
-TestDataMM.removeAttribute("id")
-
-//export default TestDataMM
-
 const MarketMakerData = db.sequelize.define(
-    "market_maker_data",
+    "mm_data",
     {
         time: DataTypes.DATE,
         marketName: DataTypes.STRING,
+        payerPK: DataTypes.STRING,
+        equity: DataTypes.FLOAT,
+        leverage: DataTypes.FLOAT,
         basePos: DataTypes.FLOAT,
         myBid: DataTypes.FLOAT,
         myAsk: DataTypes.FLOAT,
         myBid2: DataTypes.FLOAT,
         myAsk2: DataTypes.FLOAT,
-        ftxBid: DataTypes.FLOAT,
-        ftxAsk: DataTypes.FLOAT,
+        modelBid: DataTypes.FLOAT,
+        modelAsk: DataTypes.FLOAT,
         fairValue: DataTypes.FLOAT,
         oraclePrice: DataTypes.FLOAT,
         bestBid: DataTypes.FLOAT,
         bestAsk: DataTypes.FLOAT,
+        cheapness: DataTypes.FLOAT,
+        richness: DataTypes.FLOAT,
     },
-    {
-        timestamps: true,
-    }
+
 )
 sequelize.sync({ alter: true })
 MarketMakerData.removeAttribute("id")
