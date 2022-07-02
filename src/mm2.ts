@@ -701,12 +701,12 @@ function makeMarketUpdateInstructions(
     size,
   );
   let [modelBidPrice2, nativeBidSize2] = market.uiToNativePriceQuantity(
-    bidPrice*0.993,
-    size*4.87,
+    bidPrice*0.99,
+    size*8.87,
   );
   let [modelAskPrice2, nativeAskSize2] = market.uiToNativePriceQuantity(
-    askPrice*1.007,
-    size*4.95,
+    askPrice*1.01,
+    size*8.95,
   );
 
   // console.log('native bid size = ', nativeBidSize.toString());
