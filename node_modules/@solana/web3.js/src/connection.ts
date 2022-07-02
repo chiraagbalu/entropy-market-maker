@@ -1,6 +1,7 @@
 import bs58 from 'bs58';
 import {Buffer} from 'buffer';
 import fetch from 'cross-fetch';
+import type {Response} from 'cross-fetch';
 import {
   type as pick,
   number,
@@ -753,48 +754,6 @@ export type BlockSignatures = {
   /** The unix timestamp of when the block was processed */
   blockTime: number | null;
 };
-
-/**
- * recent block production information
- */
-export type BlockProduction = Readonly<{
-  /** a dictionary of validator identities, as base-58 encoded strings. Value is a two element array containing the number of leader slots and the number of blocks produced */
-  byIdentity: Readonly<Record<string, ReadonlyArray<number>>>;
-  /** Block production slot range */
-  range: Readonly<{
-    /** first slot of the block production information (inclusive) */
-    firstSlot: number;
-    /** last slot of block production information (inclusive) */
-    lastSlot: number;
-  }>;
-}>;
-
-export type GetBlockProductionConfig = {
-  /** Optional commitment level */
-  commitment?: Commitment;
-  /** Slot range to return block production for. If parameter not provided, defaults to current epoch. */
-  range?: {
-    /** first slot to return block production information for (inclusive) */
-    firstSlot: number;
-    /** last slot to return block production information for (inclusive). If parameter not provided, defaults to the highest slot */
-    lastSlot?: number;
-  };
-  /** Only return results for this validator identity (base-58 encoded) */
-  identity?: string;
-};
-
-/**
- * Expected JSON RPC response for the "getBlockProduction" message
- */
-const BlockProductionResponseStruct = jsonRpcResultAndContext(
-  pick({
-    byIdentity: record(string(), array(number())),
-    range: pick({
-      firstSlot: number(),
-      lastSlot: number(),
-    }),
-  }),
-);
 
 /**
  * A performance sample
@@ -2110,7 +2069,7 @@ export type ConnectionConfig = {
   httpHeaders?: HttpHeaders;
   /** Optional fetch middleware callback */
   fetchMiddleware?: FetchMiddleware;
-  /** Optional Disable retrying calls when server responds with HTTP 429 (Too Many Requests) */
+  /** Optional Disable retring calls when server responds with HTTP 429 (Too Many Requests) */
   disableRetryOnRateLimit?: boolean;
   /** time to allow for the server to initially process a transaction (in milliseconds) */
   confirmTransactionInitialTimeout?: number;
@@ -2269,13 +2228,6 @@ export class Connection {
    */
   get commitment(): Commitment | undefined {
     return this._commitment;
-  }
-
-  /**
-   * The RPC endpoint
-   */
-  get rpcEndpoint(): string {
-    return this._rpcEndpoint;
   }
 
   /**
@@ -3272,51 +3224,6 @@ export class Connection {
     };
   }
 
-  /*
-   * Returns the current block height of the node
-   */
-  async getBlockHeight(commitment?: Commitment): Promise<number> {
-    const args = this._buildArgs([], commitment);
-    const unsafeRes = await this._rpcRequest('getBlockHeight', args);
-    const res = create(unsafeRes, jsonRpcResult(number()));
-    if ('error' in res) {
-      throw new Error(
-        'failed to get block height information: ' + res.error.message,
-      );
-    }
-
-    return res.result;
-  }
-
-  /*
-   * Returns recent block production information from the current or previous epoch
-   */
-  async getBlockProduction(
-    configOrCommitment?: GetBlockProductionConfig | Commitment,
-  ): Promise<RpcResponseAndContext<BlockProduction>> {
-    let extra: Omit<GetBlockProductionConfig, 'commitment'> | undefined;
-    let commitment: Commitment | undefined;
-
-    if (typeof configOrCommitment === 'string') {
-      commitment = configOrCommitment;
-    } else if (configOrCommitment) {
-      const {commitment: c, ...rest} = configOrCommitment;
-      commitment = c;
-      extra = rest;
-    }
-
-    const args = this._buildArgs([], commitment, 'base64', extra);
-    const unsafeRes = await this._rpcRequest('getBlockProduction', args);
-    const res = create(unsafeRes, BlockProductionResponseStruct);
-    if ('error' in res) {
-      throw new Error(
-        'failed to get block production information: ' + res.error.message,
-      );
-    }
-
-    return res.result;
-  }
-
   /**
    * Fetch a confirmed or finalized transaction from the cluster.
    */
@@ -4048,6 +3955,11 @@ export class Connection {
       let logs;
       if ('data' in res.error) {
         logs = res.error.data.logs;
+        if (logs && Array.isArray(logs)) {
+          const traceIndent = '\n    ';
+          const logTrace = traceIndent + logs.join(traceIndent);
+          console.error(res.error.message, logTrace);
+        }
       }
       throw new SendTransactionError(
         'failed to send transaction: ' + res.error.message,
