@@ -4,47 +4,24 @@ import * as BufferLayout from '@solana/buffer-layout';
 /**
  * Layout for a public key
  */
-export const publicKey = (property: string = 'publicKey') => {
+export const publicKey = (
+  property: string = 'publicKey',
+): BufferLayout.Layout => {
   return BufferLayout.blob(32, property);
 };
 
 /**
  * Layout for a 64bit unsigned value
  */
-export const uint64 = (property: string = 'uint64') => {
+export const uint64 = (property: string = 'uint64'): BufferLayout.Layout => {
   return BufferLayout.blob(8, property);
 };
-
-interface IRustStringShim
-  extends Omit<
-    BufferLayout.Structure<
-      Readonly<{
-        length: number;
-        lengthPadding: number;
-        chars: Uint8Array;
-      }>
-    >,
-    'decode' | 'encode' | 'replicate'
-  > {
-  alloc: (str: string) => number;
-  decode: (b: Uint8Array, offset?: number) => string;
-  encode: (str: string, b: Uint8Array, offset?: number) => number;
-  replicate: (property: string) => this;
-}
 
 /**
  * Layout for a Rust String type
  */
-export const rustString = (
-  property: string = 'string',
-): BufferLayout.Layout<string> => {
-  const rsl = BufferLayout.struct<
-    Readonly<{
-      length?: number;
-      lengthPadding?: number;
-      chars: Uint8Array;
-    }>
-  >(
+export const rustString = (property: string = 'string') => {
+  const rsl = BufferLayout.struct(
     [
       BufferLayout.u32('length'),
       BufferLayout.u32('lengthPadding'),
@@ -55,21 +32,19 @@ export const rustString = (
   const _decode = rsl.decode.bind(rsl);
   const _encode = rsl.encode.bind(rsl);
 
-  const rslShim = rsl as unknown as IRustStringShim;
-
-  rslShim.decode = (b: Uint8Array, offset?: number) => {
-    const data = _decode(b, offset);
-    return data['chars'].toString();
+  rsl.decode = (buffer: any, offset: any) => {
+    const data = _decode(buffer, offset);
+    return data['chars'].toString('utf8');
   };
 
-  rslShim.encode = (str: string, b: Uint8Array, offset?: number) => {
+  rsl.encode = (str: any, buffer: any, offset: any) => {
     const data = {
       chars: Buffer.from(str, 'utf8'),
     };
-    return _encode(data, b, offset);
+    return _encode(data, buffer, offset);
   };
 
-  rslShim.alloc = (str: string) => {
+  (rsl as any).alloc = (str: any) => {
     return (
       BufferLayout.u32().span +
       BufferLayout.u32().span +
@@ -77,32 +52,24 @@ export const rustString = (
     );
   };
 
-  return rslShim;
+  return rsl;
 };
 
 /**
  * Layout for an Authorized object
  */
 export const authorized = (property: string = 'authorized') => {
-  return BufferLayout.struct<
-    Readonly<{
-      staker: Uint8Array;
-      withdrawer: Uint8Array;
-    }>
-  >([publicKey('staker'), publicKey('withdrawer')], property);
+  return BufferLayout.struct(
+    [publicKey('staker'), publicKey('withdrawer')],
+    property,
+  );
 };
 
 /**
  * Layout for a Lockup object
  */
 export const lockup = (property: string = 'lockup') => {
-  return BufferLayout.struct<
-    Readonly<{
-      custodian: Uint8Array;
-      epoch: number;
-      unixTimestamp: number;
-    }>
-  >(
+  return BufferLayout.struct(
     [
       BufferLayout.ns64('unixTimestamp'),
       BufferLayout.ns64('epoch'),
@@ -116,14 +83,7 @@ export const lockup = (property: string = 'lockup') => {
  *  Layout for a VoteInit object
  */
 export const voteInit = (property: string = 'voteInit') => {
-  return BufferLayout.struct<
-    Readonly<{
-      authorizedVoter: Uint8Array;
-      authorizedWithdrawer: Uint8Array;
-      commission: number;
-      nodePubkey: Uint8Array;
-    }>
-  >(
+  return BufferLayout.struct(
     [
       publicKey('nodePubkey'),
       publicKey('authorizedVoter'),

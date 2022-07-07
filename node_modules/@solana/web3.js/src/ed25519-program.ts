@@ -30,19 +30,7 @@ export type CreateEd25519InstructionWithPrivateKeyParams = {
   instructionIndex?: number;
 };
 
-const ED25519_INSTRUCTION_LAYOUT = BufferLayout.struct<
-  Readonly<{
-    messageDataOffset: number;
-    messageDataSize: number;
-    messageInstructionIndex: number;
-    numSignatures: number;
-    padding: number;
-    publicKeyInstructionIndex: number;
-    publicKeyOffset: number;
-    signatureInstructionIndex: number;
-    signatureOffset: number;
-  }>
->([
+const ED25519_INSTRUCTION_LAYOUT = BufferLayout.struct([
   BufferLayout.u8('numSignatures'),
   BufferLayout.u8('padding'),
   BufferLayout.u16('signatureOffset'),
@@ -94,22 +82,17 @@ export class Ed25519Program {
 
     const instructionData = Buffer.alloc(messageDataOffset + message.length);
 
-    const index =
-      instructionIndex == null
-        ? 0xffff // An index of `u16::MAX` makes it default to the current instruction.
-        : instructionIndex;
-
     ED25519_INSTRUCTION_LAYOUT.encode(
       {
         numSignatures,
         padding: 0,
         signatureOffset,
-        signatureInstructionIndex: index,
+        signatureInstructionIndex: instructionIndex,
         publicKeyOffset,
-        publicKeyInstructionIndex: index,
+        publicKeyInstructionIndex: instructionIndex,
         messageDataOffset,
         messageDataSize: message.length,
-        messageInstructionIndex: index,
+        messageInstructionIndex: instructionIndex,
       },
       instructionData,
     );
