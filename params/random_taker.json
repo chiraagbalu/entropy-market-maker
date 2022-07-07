@@ -1,7 +1,7 @@
 {
   "group": "mainnet.2",
   "entropyAccountPubkey": "7Cv9AXD2fThWVEFZLZ17kywapJKF7WPuR2hA5BgFLWiv",
-  "interval": 10000,
+  "interval": 50000,
   "take_max_sizePerc": 0.01,
   "buy_sell_skew": 0.5,
   "batch": 2,
