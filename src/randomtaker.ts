@@ -731,7 +731,7 @@ function makeMarketUpdateInstructions(
 
   console.log("Random Size: ", random_size);
   if (
-    (counter % 4000 > 200) && bestBid
+    (counter % 4000 > 100) && bestBid
   ) {
     console.log("counter: ", counter);
     console.log(`${marketContext.marketName} Selling...`);
