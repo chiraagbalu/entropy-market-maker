@@ -1100,7 +1100,7 @@ function makeMarketUpdateInstructions(
 
         if (Date.now() / 1000 - takeTimerMap[marketContext.marketName] > timeLimit) {
             writeTimerMap[marketContext.marketName] = Date.now() / 1000
-            //instructions.push(takerBuy);
+            instructions.push(takerSell);
         }
 
         //#endregion
@@ -1213,7 +1213,7 @@ function makeMarketUpdateInstructions(
 
         if (Date.now() / 1000 - takeTimerMap[marketContext.marketName] > timeLimit) {
             writeTimerMap[marketContext.marketName] = Date.now() / 1000
-            //instructions.push(takerBuy);
+            instructions.push(takerBuy);
         }
         //#endregion
     }
@@ -1247,7 +1247,7 @@ function makeMarketUpdateInstructions(
             'sell',
             'ioc',
         );
-        //instructions.push(takerSell);
+        instructions.push(takerSell);
     } else if (
         takeSpammers &&
         bestAsk !== undefined &&
@@ -1272,7 +1272,7 @@ function makeMarketUpdateInstructions(
             'buy',
             'ioc',
         );
-        //instructions.push(takerBuy);
+        instructions.push(takerBuy);
     }
     //#endregion
 
@@ -1401,11 +1401,11 @@ function makeMarketUpdateInstructions(
         );
 
         instructions.push(cancelAllInstr);
-        //instructions.push(placeBidInstr);
-        //instructions.push(placeBidInstr2);
+        instructions.push(placeBidInstr);
+        instructions.push(placeBidInstr2);
 
-        //instructions.push(placeAskInstr);
-        //instructions.push(placeAskInstr2);
+        instructions.push(placeAskInstr);
+        instructions.push(placeAskInstr2);
 
         /*
         console.log(
