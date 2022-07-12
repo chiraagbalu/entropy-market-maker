@@ -1288,6 +1288,7 @@ function makeMarketUpdateInstructions(
     if (now / 1000 - writeTimerMap[marketContext.marketName] > writeLimit) {
         console.log(`${marketContext.marketName}: writing market stats`)
         writeTimerMap[marketContext.marketName] = now / 1000
+        //make dictionary with all columns needed
         let marketstats = {
             time: now,
             marketName: marketContext.marketName,
@@ -1308,6 +1309,7 @@ function makeMarketUpdateInstructions(
             cheapness: cheapness,
             richness: richness
         }
+        //writes async
         writeMarketStatsDict(marketstats)
     }
 
@@ -1410,6 +1412,7 @@ function makeMarketUpdateInstructions(
             new Date().toISOString(), `${ marketContext.marketName } Requoting sentBidPx: ${ marketContext.sentBidPrice } newBidPx: ${ bookAdjBid } sentAskPx: ${ marketContext.sentAskPrice } newAskPx: ${ bookAdjAsk } spread: ${ bookAdjAsk.toNumber() - bookAdjBid.toNumber() } `,
         );
         */
+
         marketContext.sentBidPrice = bookAdjBid.toNumber();
         marketContext.sentAskPrice = bookAdjAsk.toNumber();
         marketContext.lastOrderUpdate = getUnixTs() / 1000;
@@ -1437,6 +1440,7 @@ function makeMarketUpdateInstructions(
     //#endregion
 }
 
+//takes dictionary of stats to write and pushes to table
 async function writeMarketStatsDict(data) {
     try {
         console.log(data)
@@ -1511,10 +1515,11 @@ process.on('unhandledRejection', function (err, promise) {
     );
 });
 
-
+//hashmaps for timers per market
 let writeTimerMap = { marketName: string, lastWriteTime: number }
 let takeTimerMap = { marketName: string, lastTakeTime: number }
 
+//creates table
 const EC2Data = db.sequelize.define(
     "ec2_data",
     {
