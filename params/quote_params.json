@@ -1,12 +1,12 @@
 {
   "group": "mainnet.2",
   "entropyAccountPubkey": "AvhFJjcR3upthCoecmJkarFAxBopqcg6SAFP8YpdLBiu",
-  "interval": 500,
+  "interval": 1000,
   "batch": 2,
   "assets": {
     "BTC^2": {
       "perp": {
-        "sizePerc": 0.1,
+        "sizePerc": 0.02,
         "leanCoeff": 0.05,
         "bias": 0.0,
         "requoteThresh": 0.0001,
@@ -18,7 +18,7 @@
     },
     "BTC": {
       "perp": {
-        "sizePerc": 0.05,
+        "sizePerc": 0.01,
         "leanCoeff": 0.01,
         "bias": -0.0000,
         "requoteThresh": 0.0001,
@@ -29,7 +29,7 @@
     },
     "BTC_1D_IV": {
       "perp": {
-        "sizePerc": 0.01,
+        "sizePerc": 0.003,
         "leanCoeff": 0.001,
         "bias": 0.0007,
         "requoteThresh": 0.005,
