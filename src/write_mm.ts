@@ -1288,7 +1288,27 @@ function makeMarketUpdateInstructions(
     if (now / 1000 - writeTimerMap[marketContext.marketName] > writeLimit) {
         console.log(`${marketContext.marketName}: writing market stats`)
         writeTimerMap[marketContext.marketName] = now / 1000
-        writeMarketStats(now, marketContext.marketName, payerPK, equity, equityPerc, basePos, bidPrice, askPrice, bidPrice * 0.993, askPrice * 1.007, ftxBid, ftxAsk, fairValue, oraclePrice, bestBidAvailable, bestAskAvailable, cheapness, richness)
+        let marketstats = {
+            time: now,
+            marketName: marketContext.marketName,
+            payerPK: payerPK,
+            equity: equity,
+            leverage: equityPerc,
+            basePos: basePos,
+            myBid: bidPrice,
+            myAsk: askPrice,
+            myBid2: askPrice * 0.993,
+            myAsk2: askPrice * 1.007,
+            modelBid: ftxBid,
+            modelAsk: ftxAsk,
+            fairValue: fairValue,
+            oraclePrice: oraclePrice,
+            bestBid: bestBidAvailable,
+            bestAsk: bestAskAvailable,
+            cheapness: cheapness,
+            richness: richness
+        }
+        writeMarketStatsDict(marketstats)
     }
 
 
@@ -1417,56 +1437,15 @@ function makeMarketUpdateInstructions(
     //#endregion
 }
 
-
-async function writeMarketStats(
-    time,
-    marketName,
-    payerPK,
-    equity,
-    leverage,
-    basePos,
-    myBid,
-    myAsk,
-    myBid2,
-    myAsk2,
-    modelBid,
-    modelAsk,
-    fairValue,
-    oraclePrice,
-    bestBid,
-    bestAsk,
-    cheapness,
-    richness
-) {
-    const data = [{
-        time: time,
-        marketName: marketName,
-        payerPK: payerPK,
-        equity: equity,
-        leverage: leverage,
-        basePos: basePos,
-        myBid: myBid,
-        myAsk: myAsk,
-        myBid2: myBid2,
-        myAsk2: myAsk2,
-        modelBid: modelBid,
-        modelAsk: modelAsk,
-        fairValue: fairValue,
-        oraclePrice: oraclePrice,
-        bestBid: bestBid,
-        bestAsk: bestAsk,
-        cheapness: cheapness,
-        richness: richness,
-    }]
+async function writeMarketStatsDict(data) {
     try {
         console.log(data)
-        await MarketMakerData.bulkCreate(data)
+        await EC2Data.bulkCreate([data])
         console.log("market maker stats inserted");
     }
     catch (err) {
         console.log("failed to insert market maker stats", `${err}`);
     }
-
 }
 
 
@@ -1536,9 +1515,8 @@ process.on('unhandledRejection', function (err, promise) {
 let writeTimerMap = { marketName: string, lastWriteTime: number }
 let takeTimerMap = { marketName: string, lastTakeTime: number }
 
-
-const MarketMakerData = db.sequelize.define(
-    "mm_data",
+const EC2Data = db.sequelize.define(
+    "ec2_data",
     {
         time: DataTypes.DATE,
         marketName: DataTypes.STRING,
@@ -1558,11 +1536,10 @@ const MarketMakerData = db.sequelize.define(
         bestAsk: DataTypes.FLOAT,
         cheapness: DataTypes.FLOAT,
         richness: DataTypes.FLOAT,
-    },
-
+    }
 )
+
 sequelize.sync({ alter: true })
-MarketMakerData.removeAttribute("id")
 
 //export MarketMakerData
 
