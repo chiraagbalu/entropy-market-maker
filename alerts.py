@@ -17,6 +17,7 @@ db_port = os.getenv('DB_PORT')
 
 stale_time = 86400
 max_leverage = 200
+channel = os.getenv('CHANNEL')
 
 
 class MyClient(discord.Client):
@@ -34,12 +35,12 @@ class MyClient(discord.Client):
         print(self.user.name)
         print(self.user.id)
         print('------')
-        channel = self.get_channel(997266071167971372)
+        channel = self.get_channel(channel)
         await channel.send('hi')
 
     @tasks.loop(seconds=60)  # task runs every 60 seconds
     async def my_background_task(self):
-        channel = self.get_channel(997266071167971372)  # channel ID goes here
+        channel = self.get_channel(channel)  # channel ID goes here
 
         dbstring = (
             f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
