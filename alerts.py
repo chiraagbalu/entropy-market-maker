@@ -18,6 +18,7 @@ db_port = os.getenv('DB_PORT')
 stale_time = 86400
 max_leverage = 200
 channel = os.getenv('CHANNEL')
+table = 'market_maker_data'
 
 
 class MyClient(discord.Client):
@@ -45,7 +46,6 @@ class MyClient(discord.Client):
         dbstring = (
             f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")
         sqlconn = create_engine(dbstring).connect()
-        table = 'ec2_data'
         mmData = pd.read_sql_table(table, sqlconn)
         await channel.send(f'using table: {table}')
         df = mmData
