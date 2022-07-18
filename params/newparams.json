@@ -1,6 +1,6 @@
 {
   "group": "mainnet.2",
-  "entropyAccountPubkey": "AvhFJjcR3upthCoecmJkarFAxBopqcg6SAFP8YpdLBiu",
+  "entropyAccountPubkey":"DKxPqq5vexW3JFZpZ2xJBA5ySFK6FruWFGajV4YiH4Am",
   "interval": 1000,
   "batch": 2,
   "assets": {
@@ -8,7 +8,7 @@
       "perp": {
         "sizePerc": 0.02,
         "leanCoeff": 0.05,
-        "bias": 0.005,
+        "bias": 0.0,
         "requoteThresh": 0.0001,
         "takeSpammers": true,
         "spammerCharge": 2,
@@ -20,7 +20,7 @@
       "perp": {
         "sizePerc": 0.01,
         "leanCoeff": 0.01,
-        "bias": 0.0001,
+        "bias": -0.0000,
         "requoteThresh": 0.0001,
         "takeSpammers": true,
         "spammerCharge": 2,
@@ -31,7 +31,7 @@
       "perp": {
         "sizePerc": 0.003,
         "leanCoeff": 0.001,
-        "bias": 0.01,
+        "bias": 0.0007,
         "requoteThresh": 0.005,
         "takeSpammers": true,
         "spammerCharge": 2,
