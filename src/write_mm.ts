@@ -1522,7 +1522,7 @@ let takeTimerMap = { marketName: string, lastTakeTime: number }
 
 //creates table
 const EC2Data = db.sequelize.define(
-    "ec2_data",
+    "mm_data",
     {
         time: DataTypes.DATE,
         marketName: DataTypes.STRING,
